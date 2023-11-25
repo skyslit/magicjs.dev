@@ -2,7 +2,7 @@
   "name": "@skyslit/ark-frontend",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "build/index.js",
   "scripts": {
     "build": "tsc",
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -11,6 +11,15 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "react-helmet-async": "^2.0.1",
     "typescript": "5.3.2"
+  },
+  "devDependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "peerDependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
   }
 }

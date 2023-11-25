@@ -5,7 +5,7 @@ import webpack, { Configuration, Stats } from 'webpack';
 import { EventEmitter } from 'events';
 import { GhostFileActions } from './ghost-file';
 import memfs from 'memfs';
-import { ufs } from 'unionfs';
+import { ufs, IUnionFs } from 'unionfs';
 
 export type BuilderMonitor = (err?: Error, result?: Stats) => void;
 
@@ -32,6 +32,8 @@ export class BuilderBase extends EventEmitter {
     constructor(options?: any) {
         super(options);
     }
+
+    initCompiler(opts: ConfigurationOptions) {}
 
     /**
      * Start build process
@@ -75,12 +77,17 @@ export class BuilderBase extends EventEmitter {
             };
         }, {});
 
+        let _memfs: memfs.IFs;
+        let _ufs: IUnionFs;
+
         if (Object.keys(volume).length > 0) {
-            const _ufs = ufs
+            _memfs = memfs.createFsFromVolume(
+                memfs.Volume.fromJSON(volume, opts.cwd)
+            );
+
+            _ufs = ufs
                 .use(
-                    memfs.createFsFromVolume(
-                        memfs.Volume.fromJSON(volume, opts.cwd)
-                    ) as any
+                    _memfs as any
                 )
                 .use(fs);
             this.compiler.inputFileSystem = _ufs;
@@ -91,12 +98,10 @@ export class BuilderBase extends EventEmitter {
             console.log('Compiling...');
         });
 
-        // this.compiler.hooks.done.tap('done', async stats => {
-        //   console.log('dz');
-        // })
+        this.initCompiler(opts);
 
         if (opts.watchMode === true) {
-            this.watching = this.compiler.watch({}, this.handler.bind(this));
+            this.watching = this.compiler.watch({  }, this.handler.bind(this));
         } else {
             this.compiler.run(this.handler.bind(this));
         }

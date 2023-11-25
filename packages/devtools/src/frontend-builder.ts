@@ -5,6 +5,10 @@ import HTMLWebpackPlugin from 'html-webpack-plugin';
 import { GhostFileActions, createGhostFile } from './ghost-file';
 import MiniCssExtractPlugin from 'mini-css-extract-plugin';
 import TerserPlugin from 'terser-webpack-plugin';
+import Case from 'case';
+import fs from 'fs';
+import WatchExternalFilesPlugin from 'webpack-watch-files-plugin';
+import VirtualModulesPlugin from 'webpack-virtual-modules';
 
 /**
  * SPA Builder
@@ -12,6 +16,7 @@ import TerserPlugin from 'terser-webpack-plugin';
 export class SPABuilder extends BuilderBase {
   private appFilePath: string;
   private appId: string;
+  private virtualModules: VirtualModulesPlugin;
   /**
    * Creates a new SPA builder instance
    * @param {string} id
@@ -21,6 +26,18 @@ export class SPABuilder extends BuilderBase {
     super();
     this.appId = id;
     this.appFilePath = appFilePath;
+    this.virtualModules = new VirtualModulesPlugin({
+      [`src/${this.appId}.tsx`]: `
+        // @ts-nocheck
+        import React from 'react';
+        import ReactDOM from 'react-dom';
+        import { startApp } from '@skyslit/ark-frontend';
+        import { initializeModules } from './auto-loader.tsx';
+
+        initializeModules();
+        startApp();
+      `
+    })
 
     if (!this.appId) {
       throw new Error('App ID should not be null');
@@ -32,19 +49,77 @@ export class SPABuilder extends BuilderBase {
    * @return {GhostFileActions[]}
    */
   getGhostFiles(opts: ConfigurationOptions): GhostFileActions[] {
-    return [
-      createGhostFile(
-        path.join(__dirname, '../../assets/Frontend/root.tsx.ejs'),
-        `src/${this.appId}.tsx`,
-        {
-          relativeAppFilePath: path.relative(
-            path.join(opts.cwd, 'src'),
-            path.join(this.appFilePath)
-          ),
+    let importExpressions: string = '';
+    let registrationExpressions: string = '';
+
+    const arkJSONPath = path.join(opts.cwd, 'src', 'ark.json');
+    const arkJSON: any = JSON.parse(fs.readFileSync(arkJSONPath, 'utf-8'));
+    if (Array.isArray(arkJSON.routes)) {
+      const importables = arkJSON.routes.map((route) => {
+        return {
+          filePath: `./${path.relative(path.join(opts.cwd, 'src'), path.join(opts.cwd, 'src', route.view))}`,
+          fileId: Case.camel(route.view)
         }
-      ),
+      });
+
+      importExpressions = importables.map((importable: any) => `import ${importable.fileId} from '${importable.filePath}';`).join('\n');
+      registrationExpressions = importables.map((importable: any) => `registerView('${importable.fileId}', ${importable.fileId});`).join('\n');
+    }
+
+    return [
+      // createGhostFile(
+      //   path.join(__dirname, '../assets/frontend/boot.tsx.ejs'),
+      //   `src/${this.appId}.tsx`,
+      //   {
+      //     relativeAppFilePath: path.relative(
+      //       path.join(opts.cwd, 'src'),
+      //       path.join(this.appFilePath)
+      //     ),
+      //   }
+      // ),
+      // createGhostFile(
+      //   path.join(__dirname, '../assets/frontend/auto-loader.tsx.ejs'),
+      //   `src/auto-loader.tsx`,
+      //   {
+      //     importExpressions,
+      //     registrationExpressions
+      //   }
+      // ),
     ];
   }
+
+  initCompiler(opts: ConfigurationOptions) {
+    this.compiler.hooks.compilation.tap('MyPlugin', (compilation) => {
+      let importExpressions: string = '';
+      let registrationExpressions: string = '';
+
+      const arkJSONPath = path.join(opts.cwd, 'src', 'ark.json');
+      const arkJSON: any = JSON.parse(fs.readFileSync(arkJSONPath, 'utf-8'));
+      if (Array.isArray(arkJSON.routes)) {
+        const importables = arkJSON.routes.map((route) => {
+          return {
+            filePath: `./${path.relative(path.join(opts.cwd, 'src'), path.join(opts.cwd, 'src', route.view))}`,
+            fileId: Case.camel(route.view)
+          }
+        });
+
+        importExpressions = importables.map((importable: any) => `import ${importable.fileId} from '${importable.filePath}';`).join('\n');
+        registrationExpressions = importables.map((importable: any) => `registerView('${importable.fileId}', ${importable.fileId});`).join('\n');
+      }
+
+      this.virtualModules.writeModule('src/auto-loader.tsx', `
+        import { registerView } from '@skyslit/ark-frontend';
+
+        ${importExpressions}
+        
+        export function initializeModules() {
+            ${registrationExpressions}
+            console.log('Modules initialised');
+        }
+      `);
+    });
+  }
+
   /**
    * @param {ConfigurationOptions} opts
    * @return {Configuration}
@@ -105,12 +180,18 @@ export class SPABuilder extends BuilderBase {
       plugins: [
         new HTMLWebpackPlugin({
           filename: '[name].html',
-          template: path.resolve(__dirname, '../../assets/index.template.html'),
+          template: path.resolve(__dirname, '../assets/index.template.html'),
         }),
         new MiniCssExtractPlugin({
           filename: './assets/[name].css',
           chunkFilename: './assets/[name].[contenthash:8].chunk.css',
         }),
+        new WatchExternalFilesPlugin({
+          files: [
+            './src/ark.json'
+          ]
+        }),
+        this.virtualModules
       ],
       stats: {
         loggingTrace: false,

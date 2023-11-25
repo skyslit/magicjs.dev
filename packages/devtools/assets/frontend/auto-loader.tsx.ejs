@@ -1,0 +1,8 @@
+import { registerView } from '@skyslit/ark-frontend';
+
+<%- importExpressions %>
+
+export function initializeModules() {
+    <%- registrationExpressions %>
+    console.log('Modules initialised');
+}
