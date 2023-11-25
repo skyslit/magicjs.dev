@@ -98,13 +98,14 @@ export class SPABuilder extends BuilderBase {
       if (Array.isArray(arkJSON.routes)) {
         const importables = arkJSON.routes.map((route) => {
           return {
+            path: route.path,
             filePath: `./${path.relative(path.join(opts.cwd, 'src'), path.join(opts.cwd, 'src', route.view))}`,
             fileId: Case.camel(route.view)
           }
         });
 
         importExpressions = importables.map((importable: any) => `import ${importable.fileId} from '${importable.filePath}';`).join('\n');
-        registrationExpressions = importables.map((importable: any) => `registerView('${importable.fileId}', ${importable.fileId});`).join('\n');
+        registrationExpressions = importables.map((importable: any) => `registerView('${importable.path}', '${importable.fileId}', ${importable.fileId});`).join('\n');
       }
 
       this.virtualModules.writeModule('src/auto-loader.tsx', `
@@ -114,7 +115,6 @@ export class SPABuilder extends BuilderBase {
         
         export function initializeModules() {
             ${registrationExpressions}
-            console.log('Modules initialised');
         }
       `);
     });
@@ -168,7 +168,7 @@ export class SPABuilder extends BuilderBase {
         symlinks: true,
       },
       entry: {
-        [this.appId]: path.join(cwd, 'src', `${this.appId}.tsx`),
+        [this.appId]: path.join(cwd, 'src', `client.tsx`),
       },
       output: {
         publicPath: '/',

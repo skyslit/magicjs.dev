@@ -2,12 +2,17 @@ import { Configuration } from 'webpack';
 import nodeExternals from 'webpack-node-externals';
 import { BuilderBase, ConfigurationOptions } from './builder-base';
 import path from 'path';
+import WatchExternalFilesPlugin from 'webpack-watch-files-plugin';
+import fs from 'fs';
+import Case from 'case';
+import VirtualModulesPlugin from 'webpack-virtual-modules';
 
 /**
  * Backend Builder
  */
 export class BackendBuilder extends BuilderBase {
   private entryFilePath: string;
+  private virtualModules: VirtualModulesPlugin;
   /**
    * Creates a new backend builder instance
    * @param {string} entryFilePath
@@ -15,7 +20,53 @@ export class BackendBuilder extends BuilderBase {
   constructor(entryFilePath: string) {
     super();
     this.entryFilePath = entryFilePath;
+    this.virtualModules = new VirtualModulesPlugin({
+      [`src/server.tsx`]: `
+        // @ts-nocheck
+        import React from 'react';
+        import ReactDOM from 'react-dom';
+        import { startApp } from '@skyslit/ark-frontend';
+        import { initializeModules } from './auto-loader.tsx';
+        import runApp from './app.tsx';
+
+        initializeModules();
+        runApp();
+      `
+    })
   }
+
+  initCompiler(opts: ConfigurationOptions) {
+    this.compiler.hooks.compilation.tap('MyPlugin', (compilation) => {
+      let importExpressions: string = '';
+      let registrationExpressions: string = '';
+
+      const arkJSONPath = path.join(opts.cwd, 'src', 'ark.json');
+      const arkJSON: any = JSON.parse(fs.readFileSync(arkJSONPath, 'utf-8'));
+      if (Array.isArray(arkJSON.routes)) {
+        const importables = arkJSON.routes.map((route) => {
+          return {
+            path: route.path,
+            filePath: `./${path.relative(path.join(opts.cwd, 'src'), path.join(opts.cwd, 'src', route.view))}`,
+            fileId: Case.camel(route.view)
+          }
+        });
+
+        importExpressions = importables.map((importable: any) => `import ${importable.fileId} from '${importable.filePath}';`).join('\n');
+        registrationExpressions = importables.map((importable: any) => `registerView('${importable.path}', '${importable.fileId}', ${importable.fileId});`).join('\n');
+      }
+
+      this.virtualModules.writeModule('src/auto-loader.tsx', `
+        import { registerView } from '@skyslit/ark-frontend';
+
+        ${importExpressions}
+        
+        export function initializeModules() {
+            ${registrationExpressions}
+        }
+      `);
+    });
+  }
+
   /**
    * @param {ConfigurationOptions} opts
    * @return {Configuration}
@@ -64,7 +115,9 @@ export class BackendBuilder extends BuilderBase {
         },
         symlinks: true,
       },
-      entry: this.entryFilePath,
+      entry: {
+        ['server']: this.entryFilePath
+      },
       output: {
         publicPath: '/',
         filename: 'main.js',
@@ -86,7 +139,14 @@ export class BackendBuilder extends BuilderBase {
         loggingTrace: false,
         errorStack: false,
       },
-      plugins: [],
+      plugins: [
+        new WatchExternalFilesPlugin({
+          files: [
+            './src/ark.json'
+          ]
+        }),
+        this.virtualModules
+      ],
       module: {
         rules: [
           {

@@ -61,7 +61,7 @@ export async function createServer(handler: (instance: ServerInstance) => void |
         const htmlFilePath = path.join(__dirname, '../client.html');
         const htmlContent = fs.readFileSync(htmlFilePath, 'utf-8');
         const htmlContentNode = HTMLParser.parse(htmlContent);
-        const appStr = ReactDOMServer.renderToString(<App helmetContext={helmetContext} />);
+        const appStr = ReactDOMServer.renderToString(<App helmetContext={helmetContext} initialPath={req.path} />);
         let headContent: string[] = [];
 
         try {
