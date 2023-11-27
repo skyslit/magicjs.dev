@@ -1,6 +1,6 @@
 {
   "name": "@skyslit/ark-backend",
-  "version": "1.0.0",
+  "version": "3.0.1",
   "description": "",
   "main": "build/index.js",
   "scripts": {
@@ -19,7 +19,7 @@
     "typescript": "5.3.2"
   },
   "devDependencies": {
-    "@skyslit/ark-frontend": "*",
+    "@skyslit/ark-frontend": "^3.0.1",
     "@types/cookie-parser": "^1.4.6",
     "@types/express": "^4.17.21",
     "@types/morgan": "^1.9.9",
