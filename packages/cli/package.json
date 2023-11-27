@@ -1,5 +1,5 @@
 {
-  "name": "@skyslit/ark-cli",
+  "name": "@skyslit/ark",
   "version": "3.0.3",
   "description": "",
   "main": "build/index.js",
