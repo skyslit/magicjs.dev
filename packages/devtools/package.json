@@ -20,6 +20,7 @@
     "case": "^1.6.3",
     "css-loader": "^6.8.1",
     "ejs": "^3.1.9",
+    "fast-glob": "^3.3.2",
     "file-loader": "^6.2.0",
     "html-webpack-plugin": "^5.5.3",
     "ignore-loader": "^0.1.2",

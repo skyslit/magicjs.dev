@@ -6,6 +6,7 @@ import WatchExternalFilesPlugin from 'webpack-watch-files-plugin';
 import fs from 'fs';
 import Case from 'case';
 import VirtualModulesPlugin from 'webpack-virtual-modules';
+import glob from 'fast-glob';
 
 /**
  * Backend Builder
@@ -55,12 +56,30 @@ export class BackendBuilder extends BuilderBase {
         registrationExpressions = importables.map((importable: any) => `registerView('${importable.path}', '${importable.fileId}', ${importable.fileId});`).join('\n');
       }
 
+      // Load all backend modules
+      const entries = glob.sync(['src/backend/**/**.ts'], { dot: false, cwd: opts.cwd });
+
+      const backendImportables = entries.map((filePath) => {
+        return {
+          filePath: `./${path.relative(path.join(opts.cwd, 'src'), path.join(opts.cwd, filePath))}`,
+          moduleVarName: Case.camel(path.relative(path.join(opts.cwd, 'src', 'backend'), path.join(opts.cwd, filePath))),
+          moduleId: path.relative(path.join(opts.cwd, 'src', 'backend'), path.join(opts.cwd, filePath)).replace(/\..+$/, '')
+        }
+      });
+
+      const backendImportExpressions = backendImportables.map((importable: any) => `import ${importable.moduleVarName} from '${importable.filePath}';`).join('\n');
+      const backendregistrationExpressions = backendImportables.map((importable: any) => `registerBackendComponent('${importable.moduleId}', ${importable.moduleVarName});`).join('\n');
+
+
       this.virtualModules.writeModule('src/auto-loader.tsx', `
         import { registerView } from '@skyslit/ark-frontend';
+        import { registerBackendComponent } from '@skyslit/ark-backend';
 
+        ${backendImportExpressions}
         ${importExpressions}
         
         export function initializeModules() {
+            ${backendregistrationExpressions}
             ${registrationExpressions}
         }
       `);

@@ -22,6 +22,7 @@ export class ServerInstance {
     httpServer: http.Server;
     app: express.Express;
     port: number = 8081;
+    functions: any = {};
 
     setPort(p: number) {
         this.port = p;
@@ -46,8 +47,25 @@ export class ServerInstance {
             '/assets',
             express.static(path.join(__dirname, '../assets'))
         );
+
+        this.app.post('/__backend/__managed/:functionPath(*)', async (req, res, next) => {
+            const { functionPath } = req.params;
+            
+            try {
+                const result = await invokeBackendFunction(createRequestContext({
+
+                }), functionPath, req.body.args);
+                return res.json(result);
+            } catch (e) {
+                return next(e)
+            }
+
+            next();
+        })
     }
 }
+
+ServerInstance.getInstance();
 
 export async function createServer(handler: (instance: ServerInstance) => void | Promise<void>, instance?: ServerInstance): Promise<ServerInstance> {
     if (!instance) {
@@ -111,4 +129,61 @@ export async function createServer(handler: (instance: ServerInstance) => void |
     return instance;
 }
 
+export function registerBackendComponent(_moduleId: string, module: any) {
+    const instance = ServerInstance.getInstance();
+    switch (module?.type) {
+        case 'express-route': {
+            const { path, method, handlers } = module.payload as any;
+            const instance = ServerInstance.getInstance();
+            // @ts-ignore
+            instance.app[method as any](path, handlers);
+            break;
+        }
+        case 'backend-function': {
+            instance.functions[_moduleId] = module.payload;
+            break;
+        }
+    }
+}
 
+export function createRoute(method: 'get' | 'post' | 'put' | 'delete', path: string, ...handlers: express.Handler[]) {
+    return {
+        type: 'express-route',
+        payload: {
+            handlers,
+            method,
+            path
+        }
+    }
+}
+
+type RequestContext = { input: any, currentUser: any, isAuthenticated: boolean };
+export function createRequestContext(c: Partial<RequestContext>) {
+    return c;
+}
+type BackendFunction = (this: RequestContext, ...args: any) => any | Promise<any>
+export function createBackendFunction(fn: BackendFunction) {
+    return {
+        type: 'backend-function',
+        payload: {
+            fn
+        }
+    }
+}
+
+export async function invokeBackendFunction(requestContext: Partial<RequestContext>, functionPath: string, ...args: any) {
+    const instance = ServerInstance.getInstance();
+    try {
+        if (functionPath) {
+            const fnPayload = instance.functions[functionPath];
+            if (fnPayload) {
+                const result = await Promise.resolve(fnPayload.fn.call(requestContext, ...args));
+                return result;
+            }
+        }
+
+        throw new Error(`No such function exists. Looking for function '${functionPath}'`);
+    } catch (e) {
+        throw e;
+    }
+}

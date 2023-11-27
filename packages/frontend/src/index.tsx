@@ -2,6 +2,7 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { HelmetProvider } from 'react-helmet-async';
 import UrlPattern from 'url-pattern';
+import { BackendRemote } from './backend';
 
 export class FrontendController {
     static instance: FrontendController;
@@ -16,7 +17,8 @@ export class FrontendController {
     registeredComponents: any[] = []
 }
 
-const controller = FrontendController.getInstance();
+export const backend = BackendRemote.getInstance();
+export const controller = FrontendController.getInstance();
 
 interface ReactComponent { (): any; getInitialState?: () => any; }
 
