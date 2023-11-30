@@ -52,12 +52,17 @@ export class ServerInstance {
             const { functionPath } = req.params;
             
             try {
+                console.log('functionPath', functionPath);
                 const result = await invokeBackendFunction(createRequestContext({
-
+                    currentUser: {
+                        name: 'Damu'
+                    }
                 }), functionPath, req.body.args);
                 return res.json(result);
-            } catch (e) {
-                return next(e)
+            } catch (e: any) {
+                return res.status(500).json({
+                    message: e?.message
+                })
             }
 
             next();
@@ -131,7 +136,10 @@ export async function createServer(handler: (instance: ServerInstance) => void |
 
 export function registerBackendComponent(_moduleId: string, module: any) {
     const instance = ServerInstance.getInstance();
-    switch (module?.type) {
+
+    const arkCompType = module?.prototype?.arkCompType;
+
+    switch (arkCompType || module?.type) {
         case 'express-route': {
             const { path, method, handlers } = module.payload as any;
             const instance = ServerInstance.getInstance();
@@ -140,7 +148,7 @@ export function registerBackendComponent(_moduleId: string, module: any) {
             break;
         }
         case 'backend-function': {
-            instance.functions[_moduleId] = module.payload;
+            instance.functions[_moduleId] = module;
             break;
         }
     }
@@ -161,14 +169,17 @@ type RequestContext = { input: any, currentUser: any, isAuthenticated: boolean }
 export function createRequestContext(c: Partial<RequestContext>) {
     return c;
 }
-type BackendFunction = (this: RequestContext, ...args: any) => any | Promise<any>
+type BackendFunction = (...args: any) => Promise<any>
 export function createBackendFunction(fn: BackendFunction) {
-    return {
-        type: 'backend-function',
-        payload: {
-            fn
-        }
+    fn.prototype.arkCompType = 'backend-function';
+    return fn
+}
+export const useFunctionContext = (t: any): RequestContext => {
+    if (!t) {
+        throw new Error('Request context is undefined. Make sure you are invoking the function with proper context.');
     }
+    // @ts-ignore
+    return t;
 }
 
 export async function invokeBackendFunction(requestContext: Partial<RequestContext>, functionPath: string, ...args: any) {
@@ -177,7 +188,7 @@ export async function invokeBackendFunction(requestContext: Partial<RequestConte
         if (functionPath) {
             const fnPayload = instance.functions[functionPath];
             if (fnPayload) {
-                const result = await Promise.resolve(fnPayload.fn.call(requestContext, ...args));
+                const result = await Promise.resolve(fnPayload.call(requestContext, ...args));
                 return result;
             }
         }

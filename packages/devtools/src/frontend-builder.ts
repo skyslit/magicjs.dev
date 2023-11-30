@@ -110,6 +110,7 @@ export class SPABuilder extends BuilderBase {
 
       this.virtualModules.writeModule('src/auto-loader.tsx', `
         import { registerView } from '@skyslit/ark-frontend';
+        import './root.scss';
 
         ${importExpressions}
         
@@ -197,6 +198,9 @@ export class SPABuilder extends BuilderBase {
         loggingTrace: false,
         errorStack: false,
       },
+      resolveLoader: {
+        modules: ['node_modules', path.resolve(__dirname, 'loaders')]
+      },
       module: {
         rules: [
           {
@@ -212,6 +216,7 @@ export class SPABuilder extends BuilderBase {
                 loader: require.resolve('babel-loader'),
                 options: babelLoaderOptions,
               },
+              'remote-loader'
             ],
           },
           {

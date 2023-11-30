@@ -7,6 +7,7 @@ import fs from 'fs';
 import Case from 'case';
 import VirtualModulesPlugin from 'webpack-virtual-modules';
 import glob from 'fast-glob';
+import { extractBackendModuleId } from './utils/backend-module-extractor';
 
 /**
  * Backend Builder
@@ -57,13 +58,13 @@ export class BackendBuilder extends BuilderBase {
       }
 
       // Load all backend modules
-      const entries = glob.sync(['src/backend/**/**.ts'], { dot: false, cwd: opts.cwd });
+      const entries = glob.sync(['src/**/**.server.tsx'], { dot: false, cwd: opts.cwd });
 
       const backendImportables = entries.map((filePath) => {
         return {
           filePath: `./${path.relative(path.join(opts.cwd, 'src'), path.join(opts.cwd, filePath))}`,
           moduleVarName: Case.camel(path.relative(path.join(opts.cwd, 'src', 'backend'), path.join(opts.cwd, filePath))),
-          moduleId: path.relative(path.join(opts.cwd, 'src', 'backend'), path.join(opts.cwd, filePath)).replace(/\..+$/, '')
+          moduleId: extractBackendModuleId(opts.cwd, filePath)
         }
       });
 
