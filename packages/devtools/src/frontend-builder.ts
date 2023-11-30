@@ -154,6 +154,7 @@ export class SPABuilder extends BuilderBase {
     };
 
     return {
+      cache: false,
       devtool: mode === 'development' ? 'source-map' : false,
       context: cwd,
       mode,
@@ -257,11 +258,11 @@ export class SPABuilder extends BuilderBase {
                 loader: require.resolve('css-loader'),
               },
               {
-                loader: require.resolve('postcss-loader'),
-              },
-              {
                 loader: require.resolve('sass-loader'),
               },
+              {
+                loader: require.resolve('postcss-loader'),
+              }
             ],
           },
         ],

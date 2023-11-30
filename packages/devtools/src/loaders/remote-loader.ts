@@ -1,5 +1,3 @@
-import { urlToRequest } from 'loader-utils';
-import { validate } from 'schema-utils';
 import { extractBackendModuleId } from '../utils/backend-module-extractor';
 import path from 'path';
 
