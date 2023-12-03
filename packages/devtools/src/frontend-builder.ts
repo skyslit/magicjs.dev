@@ -104,20 +104,32 @@ export class SPABuilder extends BuilderBase {
           }
         });
 
-        importExpressions = importables.map((importable: any) => `import ${importable.fileId} from '${importable.filePath}';`).join('\n');
+        const uniqueImportables = (importables as any[]).reduce((acc: any[], importable, index, items) => {
+          const alreadyAdded = acc.findIndex((a) => a.fileId === importable.fileId) > -1;
+          if (alreadyAdded === false) {
+            acc.push(importable);
+          }
+          return acc;
+        }, []);
+        importExpressions = uniqueImportables.map((importable: any) => `import ${importable.fileId} from '${importable.filePath}';`).join('\n');
         registrationExpressions = importables.map((importable: any) => `registerView('${importable.path}', '${importable.fileId}', ${importable.fileId});`).join('\n');
       }
 
-      this.virtualModules.writeModule('src/auto-loader.tsx', `
-        import { registerView } from '@skyslit/ark-frontend';
+      const content = `
+        import { registerView, controller } from '@skyslit/ark-frontend';
         import './root.scss';
+        import arkConfig from './ark.json';
 
         ${importExpressions}
+        
+        controller.arkConfig = arkConfig;
         
         export function initializeModules() {
             ${registrationExpressions}
         }
-      `);
+      `
+
+      this.virtualModules.writeModule('src/auto-loader.tsx', content);
     });
   }
 

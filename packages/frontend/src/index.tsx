@@ -14,7 +14,8 @@ export class FrontendController {
         return FrontendController.instance;
     }
 
-    registeredComponents: any[] = []
+    registeredComponents: any[] = [];
+    arkConfig: any = null;
 }
 
 export const backend = BackendRemote.getInstance();
@@ -89,6 +90,43 @@ function PageRenderer(props: any) {
     return (
         <component.Component />
     )
+}
+
+export type LinkDisplayProps = {
+    pageId: string,
+    params?: any,
+    children?: (props: { url: string }) => JSX.Element
+}
+export function LinkDisplay(props: LinkDisplayProps): JSX.Element {
+    const { pageId, params } = props;
+    const routeInfo = React.useMemo(() => {
+        if (Array.isArray(controller?.arkConfig?.routes)) {
+            return controller.arkConfig.routes.find((r: any) => r.pageId === pageId);
+        }
+
+        return null;
+    }, [pageId]);
+
+    const url: string = React.useMemo(() => {
+        if (routeInfo) {
+            const { path } = routeInfo;
+            try {
+                const pat = new UrlPattern(path);
+                return pat.stringify(params)
+            } catch (e) {
+                console.error(e);
+                return path;
+            }
+        }
+
+        return null as any;
+    }, [routeInfo, params]);
+
+    if (url && props?.children) {
+        return props.children({ url })
+    }
+
+    return (<></>)
 }
 
 /* -------------------------------------------------------------------------- */
