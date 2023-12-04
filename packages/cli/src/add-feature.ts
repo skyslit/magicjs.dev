@@ -1,6 +1,6 @@
 import fs from 'fs-extra';
 import path from 'path';
-import { http } from 'follow-redirects';
+import { https } from 'follow-redirects';
 import gunzip from 'gunzip-maybe';
 import tar from 'tar-fs';
 
@@ -23,9 +23,8 @@ export async function addFeature(featureName: string, packageId: string) {
     await new Promise<void>((resolve, reject) =>{
         const file = fs.createWriteStream(TARGET_TAR_FILE_PATH);
 
-        const request = http.get({
-            hostname: 'localhost',
-            port: 8081,
+        const request = https.get({
+            hostname: 'app.mern.ai',
             path: `/___service/compass/downloadTemplate?packageId=${encodeURIComponent(packageId)}`,
             headers: {
                 'user-agent': 'Mozilla/5.0'

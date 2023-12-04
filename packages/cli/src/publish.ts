@@ -49,7 +49,7 @@ export async function publish(featureName: string, secretKey: string) {
     form.append('archive', fs.createReadStream(TARGET_TAR_FILE_PATH));
     form.append('config', JSON.stringify(config));
 
-    const res = await axios.post(`http://localhost:8081/___service/compass/publishTemplate?packageId=${encodeURIComponent(config.packageId)}`, form, {
+    const res = await axios.post(`https://app.mern.ai/___service/compass/publishTemplate?packageId=${encodeURIComponent(config.packageId)}`, form, {
         headers: {
             ...form.getHeaders(),
             'secretkey': secretKey
