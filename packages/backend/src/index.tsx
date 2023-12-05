@@ -1,3 +1,5 @@
+require('dotenv').config()
+
 import http from 'http';
 import express from 'express';
 import cookieParser from 'cookie-parser';
@@ -7,7 +9,32 @@ import ReactDOMServer from 'react-dom/server';
 import fs from 'fs';
 import path from 'path';
 import HTMLParser from 'node-html-parser';
-import { App } from '@skyslit/ark-frontend';
+import { App, FrontendController } from '@skyslit/ark-frontend';
+import { MongoClient, Collection } from 'mongodb';
+import jwt from 'jsonwebtoken';
+import moment from 'moment';
+import utilsImp from './utils';
+
+export const utils = utilsImp;
+
+
+declare global {
+    namespace Express {
+      interface Request {
+        requestContext: RequestContext
+      }
+    }
+}
+
+function extractFrontendContext(c: RequestContext) {
+    const { currentUser, isAuthenticated, token } = c;
+
+    return {
+        currentUser,
+        isAuthenticated,
+        token
+    }
+}
 
 export class ServerInstance {
     static instance: ServerInstance;
@@ -19,22 +46,34 @@ export class ServerInstance {
         return ServerInstance.instance;
     }
 
+    database?: MongoClient;
     httpServer: http.Server;
     app: express.Express;
     port: number = 8081;
     functions: any = {};
+    auth = {
+        jwtSecret: '77PjsGGRSkemFS@q$aAinTS',
+        jwtSignOpts: {
+            expiresIn: '1d',
+        },
+        createCookieOptions: () => {
+            return {
+                expires: moment.utc().add(23, 'hours').toDate()
+            }
+        }
+    };
 
     setPort(p: number) {
         this.port = p;
     }
 
-    constructor () {
+    constructor() {
         this.app = express();
         this.httpServer = http.createServer(this.app);
-        
+
         this.app.use(morgan('dev'));
         this.app.use(cookieParser());
-        
+
         this.app.use(express.json());
         this.app.use(express.urlencoded());
         this.app.use(express.text());
@@ -48,43 +87,128 @@ export class ServerInstance {
             express.static(path.join(__dirname, '../assets'))
         );
 
+        /** Attach context */
+        this.app.use(async (req, res, next) => {
+            let isAuthenticated: boolean = false;
+            let currentUser: any = null;
+            let authorization = decodeURIComponent(req.cookies['authorization'] || '');
+            if (authorization) {
+                authorization = authorization.replace('Bearer', '').trim();
+                if (authorization) {
+                    const payload = jwt.verify(authorization, this.auth.jwtSecret);
+                    if (payload) {
+                        currentUser = payload;
+                    }
+                }
+            }
+
+            isAuthenticated = Boolean(currentUser);
+
+            req.requestContext = createRequestContext({
+                token: req.cookies['authorization'],
+                isAuthenticated,
+                currentUser,
+                setCurrentUser: (user) => {
+                    if (user) {
+                        /** Login */
+                        /** Delete password */
+                        delete user.password;
+
+                        const token = jwt.sign(user, this.auth.jwtSecret, this.auth.jwtSignOpts);
+
+                        let cookieOpts: any = this?.auth?.createCookieOptions && this?.auth?.createCookieOptions();
+
+                        if (!cookieOpts) {
+                            cookieOpts = {};
+                        }
+
+                        res.cookie(
+                            'authorization',
+                            `Bearer ${token}`,
+                            cookieOpts
+                        );
+                    } else {
+                        console.log('Logging out...');
+                        /** Logout */
+                        let cookieOpts: any = this?.auth?.createCookieOptions && this?.auth?.createCookieOptions();
+
+                        if (!cookieOpts) {
+                            cookieOpts = {};
+                        }
+
+                        cookieOpts.expires = moment.utc().add(-5, 'days').toDate()
+
+                        if (!cookieOpts) {
+                            cookieOpts = {};
+                        }
+
+                        res.cookie(
+                            'authorization',
+                            `null`,
+                            cookieOpts
+                        );
+                    }
+                }
+            });
+            next();
+        })
+
         this.app.post('/__backend/__managed/:functionPath(*)', async (req, res, next) => {
             const { functionPath } = req.params;
-            
+
             try {
-                console.log('functionPath', functionPath);
-                const result = await invokeBackendFunction(createRequestContext({
-                    currentUser: {
-                        name: 'Damu'
-                    }
-                }), functionPath, req.body.args);
+                const result = await invokeBackendFunction(req.requestContext, functionPath, ...req.body.args);
                 return res.json(result);
             } catch (e: any) {
                 return res.status(500).json({
                     message: e?.message
                 })
             }
+        });
 
-            next();
-        })
+        this.app.post('/__backend/__context', async (req, res) => {
+            res.json(extractFrontendContext(req.requestContext))
+        });
+
+        this.app.post('/__backend/__context/logout', async (req, res) => {
+            req.requestContext.setCurrentUser(null);
+            res.json({ ack: true });
+        });
     }
 }
 
-ServerInstance.getInstance();
+const instance = ServerInstance.getInstance();
 
-export async function createServer(handler: (instance: ServerInstance) => void | Promise<void>, instance?: ServerInstance): Promise<ServerInstance> {
+export async function createServer(handler?: (instance: ServerInstance) => void | Promise<void>, instance?: ServerInstance): Promise<ServerInstance> {
     if (!instance) {
         instance = ServerInstance.getInstance();
     }
 
-    await Promise.resolve(handler(instance));
+    const MONGO_CONNECTION_STRING = process.env['MONGO_CONNECTION_STRING'];
+
+    if (MONGO_CONNECTION_STRING) {
+        console.log('Connecting to db...');
+        /** Connect to MongoDB */
+        instance.database = new MongoClient(MONGO_CONNECTION_STRING);
+        await instance.database.connect();
+        console.log('Connected to db');
+    }
+
+    if (handler) {
+        await Promise.resolve(handler(instance));
+    }
 
     instance.app.get('/*', (req, res, next) => {
         let helmetContext: any = {};
         const htmlFilePath = path.join(__dirname, '../client.html');
         const htmlContent = fs.readFileSync(htmlFilePath, 'utf-8');
         const htmlContentNode = HTMLParser.parse(htmlContent);
-        const appStr = ReactDOMServer.renderToString(<App helmetContext={helmetContext} initialPath={req.path} />);
+
+        const passThruContext = extractFrontendContext(req.requestContext);
+        const controller = new FrontendController();
+        controller.context = passThruContext as any;
+        
+        const appStr = ReactDOMServer.renderToString(<App helmetContext={helmetContext} initialPath={req.path} controller={controller} />);
         let headContent: string[] = [];
 
         try {
@@ -119,6 +243,15 @@ export async function createServer(handler: (instance: ServerInstance) => void |
         } catch (e) {
             console.error(e);
         }
+
+        const headCon = htmlContentNode.querySelector('head');
+        if (headCon) {
+            const scriptNode = HTMLParser.parse(
+                `<script>globalThis.___ark_hydrated_state___=${JSON.stringify(passThruContext)};</script>`
+            );
+            headCon.appendChild(scriptNode);
+        }
+
         const rootDiv = htmlContentNode.querySelector('#root');
         if (rootDiv) {
             rootDiv.set_content(appStr);
@@ -165,8 +298,8 @@ export function createRoute(method: 'get' | 'post' | 'put' | 'delete', path: str
     }
 }
 
-type RequestContext = { input: any, currentUser: any, isAuthenticated: boolean };
-export function createRequestContext(c: Partial<RequestContext>) {
+type RequestContext = { setCurrentUser: (user: any) => void, currentUser: any, isAuthenticated: boolean, token: string };
+export function createRequestContext(c: RequestContext) {
     return c;
 }
 type BackendFunction = (...args: any) => Promise<any>
@@ -197,4 +330,16 @@ export async function invokeBackendFunction(requestContext: Partial<RequestConte
     } catch (e) {
         throw e;
     }
+}
+
+/* -------------------------------------------------------------------------- */
+/*                                    Data                                    */
+/* -------------------------------------------------------------------------- */
+
+export function data(collectionName: string, dbName?: string): Collection {
+    if (!instance.database) {
+        throw new Error('Database is not available. Please check the environment variable.');
+    }
+
+    return instance.database.db(dbName).collection(collectionName);
 }

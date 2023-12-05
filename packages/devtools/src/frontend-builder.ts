@@ -202,7 +202,8 @@ export class SPABuilder extends BuilderBase {
         }),
         new WatchExternalFilesPlugin({
           files: [
-            './src/ark.json'
+            './src/ark.json',
+            '.env'
           ]
         }),
         this.virtualModules

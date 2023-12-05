@@ -173,7 +173,8 @@ export class BackendBuilder extends BuilderBase {
       plugins: [
         new WatchExternalFilesPlugin({
           files: [
-            './src/ark.json'
+            './src/ark.json',
+            '.env'
           ]
         }),
         this.virtualModules
