@@ -8,6 +8,7 @@ import Case from 'case';
 import VirtualModulesPlugin from 'webpack-virtual-modules';
 import glob from 'fast-glob';
 import { extractBackendModuleId } from './utils/backend-module-extractor';
+import { generateAutoloaderFile } from './utils/generate-auto-loader-file';
 
 /**
  * Backend Builder
@@ -39,61 +40,7 @@ export class BackendBuilder extends BuilderBase {
 
   initCompiler(opts: ConfigurationOptions) {
     this.compiler.hooks.compilation.tap('MyPlugin', (compilation) => {
-      let importExpressions: string = '';
-      let registrationExpressions: string = '';
-
-      const arkJSONPath = path.join(opts.cwd, 'src', 'ark.json');
-      const arkJSON: any = JSON.parse(fs.readFileSync(arkJSONPath, 'utf-8'));
-      if (Array.isArray(arkJSON.routes)) {
-        const importables = arkJSON.routes.map((route) => {
-          return {
-            path: route.path,
-            filePath: `./${path.relative(path.join(opts.cwd, 'src'), path.join(opts.cwd, 'src', route.view))}`,
-            fileId: Case.camel(route.view)
-          }
-        });
-
-        const uniqueImportables = (importables as any[]).reduce((acc: any[], importable, index, items) => {
-          const alreadyAdded = acc.findIndex((a) => a.fileId === importable.fileId) > -1;
-          if (alreadyAdded === false) {
-            acc.push(importable);
-          }
-          return acc;
-        }, []);
-        importExpressions = uniqueImportables.map((importable: any) => `import ${importable.fileId} from '${importable.filePath}';`).join('\n');
-        registrationExpressions = importables.map((importable: any) => `registerView('${importable.path}', '${importable.fileId}', ${importable.fileId});`).join('\n');
-      }
-
-      // Load all backend modules
-      const entries = glob.sync(['src/**/**.server.tsx'], { dot: false, cwd: opts.cwd });
-
-      const backendImportables = entries.map((filePath) => {
-        return {
-          filePath: `./${path.relative(path.join(opts.cwd, 'src'), path.join(opts.cwd, filePath))}`,
-          moduleVarName: Case.camel(path.relative(path.join(opts.cwd, 'src', 'backend'), path.join(opts.cwd, filePath))),
-          moduleId: extractBackendModuleId(opts.cwd, filePath)
-        }
-      });
-
-      const backendImportExpressions = backendImportables.map((importable: any) => `import ${importable.moduleVarName} from '${importable.filePath}';`).join('\n');
-      const backendregistrationExpressions = backendImportables.map((importable: any) => `registerBackendComponent('${importable.moduleId}', ${importable.moduleVarName});`).join('\n');
-
-      const content = `
-        import { registerView, controller } from '@skyslit/ark-frontend';
-        import { registerBackendComponent } from '@skyslit/ark-backend';
-        import arkConfig from './ark.json';
-
-        ${backendImportExpressions}
-        ${importExpressions}
-
-        controller.arkConfig = arkConfig;
-        
-        export function initializeModules() {
-            ${backendregistrationExpressions}
-            ${registrationExpressions}
-        }
-      `
-
+      const content = generateAutoloaderFile(opts.cwd, 'backend');
       this.virtualModules.writeModule('src/auto-loader.tsx', content);
     });
   }

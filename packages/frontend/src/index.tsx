@@ -56,6 +56,7 @@ export class FrontendController {
         currentUser: null
     }
     map: any = {};
+    applets: any[] = [];
     client: Axios = axios.create();
 
     subscribe(event: string, handler: any): () => void {
@@ -173,6 +174,13 @@ export function registerView(path: string, id: string, Component: any) {
     })
 }
 
+export function registerApplet(meta: any, Component: any) {
+    controller.applets.push({
+        ...meta,
+        Component
+    });
+}
+
 /* -------------------------------------------------------------------------- */
 /*                                Route Begins                                */
 /* -------------------------------------------------------------------------- */
@@ -271,6 +279,30 @@ export function LinkDisplay(props: LinkDisplayProps): JSX.Element {
 /* -------------------------------------------------------------------------- */
 /*                                 Route Ends                                 */
 /* -------------------------------------------------------------------------- */
+
+/* -------------------------------------------------------------------------- */
+/*                                   Portal                                   */
+/* -------------------------------------------------------------------------- */
+
+export function Applet(props: { id: string }) {
+    const { id, ...rest } = props;
+    const applet = React.useMemo(() => {
+        for (const applet of controller.applets) {
+            const isIdMatching = (applet?.resolvers || []).indexOf(id) > -1;
+            if (isIdMatching === true) {
+                return applet;
+            }
+        }
+    }, [id]);
+
+    if (!applet) {
+        return null;
+    }
+
+    return (
+        <applet.Component {...rest} />
+    )
+}
 
 export function App(props: { initialPath?: any, helmetContext?: any, controller?: FrontendController }) {
     const route = createRoute(props?.initialPath);

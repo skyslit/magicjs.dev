@@ -9,6 +9,8 @@ import Case from 'case';
 import fs from 'fs';
 import WatchExternalFilesPlugin from 'webpack-watch-files-plugin';
 import VirtualModulesPlugin from 'webpack-virtual-modules';
+import glob from 'fast-glob';
+import { generateAutoloaderFile } from './utils/generate-auto-loader-file';
 
 /**
  * SPA Builder
@@ -66,69 +68,12 @@ export class SPABuilder extends BuilderBase {
       registrationExpressions = importables.map((importable: any) => `registerView('${importable.fileId}', ${importable.fileId});`).join('\n');
     }
 
-    return [
-      // createGhostFile(
-      //   path.join(__dirname, '../assets/frontend/boot.tsx.ejs'),
-      //   `src/${this.appId}.tsx`,
-      //   {
-      //     relativeAppFilePath: path.relative(
-      //       path.join(opts.cwd, 'src'),
-      //       path.join(this.appFilePath)
-      //     ),
-      //   }
-      // ),
-      // createGhostFile(
-      //   path.join(__dirname, '../assets/frontend/auto-loader.tsx.ejs'),
-      //   `src/auto-loader.tsx`,
-      //   {
-      //     importExpressions,
-      //     registrationExpressions
-      //   }
-      // ),
-    ];
+    return [];
   }
 
   initCompiler(opts: ConfigurationOptions) {
     this.compiler.hooks.compilation.tap('MyPlugin', (compilation) => {
-      let importExpressions: string = '';
-      let registrationExpressions: string = '';
-
-      const arkJSONPath = path.join(opts.cwd, 'src', 'ark.json');
-      const arkJSON: any = JSON.parse(fs.readFileSync(arkJSONPath, 'utf-8'));
-      if (Array.isArray(arkJSON.routes)) {
-        const importables = arkJSON.routes.map((route) => {
-          return {
-            path: route.path,
-            filePath: `./${path.relative(path.join(opts.cwd, 'src'), path.join(opts.cwd, 'src', route.view))}`,
-            fileId: Case.camel(route.view)
-          }
-        });
-
-        const uniqueImportables = (importables as any[]).reduce((acc: any[], importable, index, items) => {
-          const alreadyAdded = acc.findIndex((a) => a.fileId === importable.fileId) > -1;
-          if (alreadyAdded === false) {
-            acc.push(importable);
-          }
-          return acc;
-        }, []);
-        importExpressions = uniqueImportables.map((importable: any) => `import ${importable.fileId} from '${importable.filePath}';`).join('\n');
-        registrationExpressions = importables.map((importable: any) => `registerView('${importable.path}', '${importable.fileId}', ${importable.fileId});`).join('\n');
-      }
-
-      const content = `
-        import { registerView, controller } from '@skyslit/ark-frontend';
-        import './root.scss';
-        import arkConfig from './ark.json';
-
-        ${importExpressions}
-        
-        controller.arkConfig = arkConfig;
-        
-        export function initializeModules() {
-            ${registrationExpressions}
-        }
-      `
-
+      const content = generateAutoloaderFile(opts.cwd, 'frontend');
       this.virtualModules.writeModule('src/auto-loader.tsx', content);
     });
   }
