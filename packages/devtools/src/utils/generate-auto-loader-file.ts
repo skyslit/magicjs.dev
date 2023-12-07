@@ -4,6 +4,23 @@ import glob from 'fast-glob';
 import path from 'path';
 import { extractBackendModuleId } from './backend-module-extractor';
 
+function* infinite() {
+    let index = 0;
+    let timestamp = (new Date()).valueOf();
+
+    const g = () => `${index}`;
+
+    while (true) {
+        index++;
+
+        yield g();
+    }
+
+    return g();
+}
+
+export const generator = infinite();
+
 export function generateAutoloaderFile(cwd: string, target: 'frontend' | 'backend') {
     let lazyLoadingEnabled = target === 'frontend';
     let importExpressions: string = '';
@@ -90,14 +107,15 @@ export function generateAutoloaderFile(cwd: string, target: 'frontend' | 'backen
         registrationExpressions = importables.map((importable: any) => {
             if (importable.type === 'view') {
                 if (lazyLoadingEnabled === true) {
+                    const id = generator.next().value;
                     return `
-                        const ${importable.fileId}_COMP = (props: any) => {
+                        const ${importable.fileId}_COMP${id} = (props: any) => {
                         return (
                             <${importable.fileId} {...props} />
                         )
                         }
                 
-                        registerView('${importable.path}', '${importable.fileId}', attachRouteMeta(${JSON.stringify(importable)}, ${importable.fileId}_COMP));
+                        registerView('${importable.path}', '${importable.fileId}', attachRouteMeta(${JSON.stringify(importable)}, ${importable.fileId}_COMP${id}));
                     `;
                 } else {
                     return `
@@ -106,16 +124,17 @@ export function generateAutoloaderFile(cwd: string, target: 'frontend' | 'backen
                 }
                 
             } else if (importable.type === 'applet') {
+                const id = generator.next().value;
                 if (lazyLoadingEnabled === true) {
                     return (
                         `
-                        const ${importable.fileId}_COMP = (props: any) => {
+                        const ${importable.fileId}_COMP${id} = (props: any) => {
                             return (
                             <${importable.fileId} {...props} />
                             )
                         }
     
-                        registerApplet(${JSON.stringify(importable)}, attachAppletMeta(${JSON.stringify(importable)}, ${importable.fileId}_COMP));
+                        registerApplet(${JSON.stringify(importable)}, attachAppletMeta(${JSON.stringify(importable)}, ${importable.fileId}_COMP${id}));
                         `
                     )
                 } else {

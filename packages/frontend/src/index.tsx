@@ -169,7 +169,7 @@ export function useController() {
 /*                                    View                                    */
 /* -------------------------------------------------------------------------- */
 
-interface ReactComponent { (): any; getInitialState?: () => any; }
+interface ReactComponent { (...props: any[]): any; getInitialState?: () => any; }
 
 export function createComponent(component: ReactComponent) {
     return component;
@@ -365,7 +365,7 @@ export function LinkDisplay(props: LinkDisplayProps): JSX.Element {
         return path.join(url, appletUrl);
     }, [url, appletUrl])
 
-    if (finalUrl && props?.children) {
+    if (finalUrl && props?.children && finalUrl !== '.') {
         return props.children({ url: finalUrl })
     }
 
@@ -396,7 +396,7 @@ export function Link(props: { to?: string, children?: any }) {
 /*                                   Portal                                   */
 /* -------------------------------------------------------------------------- */
 
-export function Applet(props: { id: string }) {
+export function Applet(props: { id: string } & any) {
     const { controller } = useController();
     const { id, ...rest } = props;
     const applet = React.useMemo(() => {
