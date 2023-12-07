@@ -9,7 +9,7 @@ export default function (source) {
         import { controllerRef } from '@skyslit/ark-frontend';
         export default async function (...args: any[]) {
             try {
-                const res = await controller.client.post('/__backend/__managed/' + '${backendModuleId}', {
+                const res = await controllerRef.client.post('/__backend/__managed/' + '${backendModuleId}', {
                     args
                 }, {
                     withCredentials: true
