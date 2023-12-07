@@ -372,12 +372,12 @@ export function LinkDisplay(props: LinkDisplayProps): JSX.Element {
     return (<></>)
 }
 
-export function Link(props: { to?: string, children?: any }) {
+export function Link(props: { to?: string, children?: any, className?: string }) {
     const { to } = props;
     const { push } = useRoute();
 
     return (
-        <a href={to} onClick={(e) => {
+        <a className={props.className} href={to} onClick={(e) => {
             e.preventDefault();
             if (to) {
                 push(to);
