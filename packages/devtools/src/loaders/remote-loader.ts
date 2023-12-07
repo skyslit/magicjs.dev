@@ -6,7 +6,7 @@ export default function (source) {
     if (isARemoteFile === true) {
         const backendModuleId = extractBackendModuleId(process.cwd(), path.relative(process.cwd(), this.resourcePath));
         return `
-        import { controller } from '@skyslit/ark-frontend';
+        import { controllerRef } from '@skyslit/ark-frontend';
         export default async function (...args: any[]) {
             try {
                 const res = await controller.client.post('/__backend/__managed/' + '${backendModuleId}', {

@@ -9,7 +9,7 @@ import ReactDOMServer from 'react-dom/server';
 import fs from 'fs';
 import path from 'path';
 import HTMLParser from 'node-html-parser';
-import { App, FrontendController } from '@skyslit/ark-frontend';
+import { App, FrontendController, controllerRef } from '@skyslit/ark-frontend';
 import { MongoClient, Collection } from 'mongodb';
 import jwt from 'jsonwebtoken';
 import moment from 'moment';
@@ -206,6 +206,11 @@ export async function createServer(handler?: (instance: ServerInstance) => void 
 
         const passThruContext = extractFrontendContext(req.requestContext);
         const controller = new FrontendController();
+
+        controller.applets = controllerRef.applets;
+        controller.arkConfig = controllerRef.arkConfig;
+        controller.registeredComponents = controllerRef.registeredComponents;
+
         controller.context = passThruContext as any;
         
         const appStr = ReactDOMServer.renderToString(<App helmetContext={helmetContext} initialPath={req.path} controller={controller} />);

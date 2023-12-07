@@ -127,8 +127,9 @@ export class FrontendController {
 }
 
 export const backend = BackendRemote.getInstance();
-export const controller = FrontendController.getInstance();
-export const ControllerContext = React.createContext(controller);
+export const controllerRef = FrontendController.getInstance();
+// @ts-ignore
+export const ControllerContext = React.createContext<FrontendController>(null);
 
 /* -------------------------------------------------------------------------- */
 /*                                 Core Hooks                                 */
@@ -155,6 +156,7 @@ export function useLogin() {
 }
 
 export function useAxios() {
+    const { controller } = useController();
     return controller.client;
 }
 
@@ -174,14 +176,14 @@ export function createComponent(component: ReactComponent) {
 }
 
 export function registerView(path: string, id: string, Component: any) {
-    controller.registeredComponents.push({
+    controllerRef.registeredComponents.push({
         path,
         Component
     })
 }
 
 export function registerApplet(meta: any, Component: any) {
-    controller.applets.push({
+    controllerRef.applets.push({
         ...meta,
         Component
     });
@@ -202,6 +204,7 @@ type RouteApi = {
 // @ts-ignore
 const RouteProvider = React.createContext<RouteApi>(null);
 const RouteMetaContext = React.createContext<any>(null);
+const AppletMetaContext = React.createContext<any>(null);
 
 export function attachRouteMeta(routeMeta: any, Comp: any) {
     return (props: any) => (
@@ -211,12 +214,23 @@ export function attachRouteMeta(routeMeta: any, Comp: any) {
     )
 }
 
+export function attachAppletMeta(appletMeta: any, Comp: any) {
+    return (props: any) => (
+        <AppletMetaContext.Provider value={appletMeta}>
+            <Comp {...props} />
+        </AppletMetaContext.Provider>
+    )
+}
+
 export function useRouteMeta() {
     return React.useContext(RouteMetaContext);
 }
 
-function createRoute(defaultRoot: string): RouteApi {
-    const { controller } = useController();
+export function useAppletMeta() {
+    return React.useContext(AppletMetaContext);
+}
+
+function createRoute(defaultRoot: string, controller: FrontendController): RouteApi {
     const [isInitialRender, setIsInitialRender] = React.useState(true);
     const [pathname, setPathname] = React.useState(defaultRoot || globalThis?.window?.location?.pathname);
 
@@ -284,7 +298,7 @@ function PageRenderer(props: any) {
     )
 }
 
-function getRouteInfoByPageId(pageId: string) {
+function getRouteInfoByPageId(pageId: string, controller: FrontendController) {
     if (Array.isArray(controller?.arkConfig?.routes)) {
         return controller.arkConfig.routes.find((r: any) => r.pageId === pageId);
     }
@@ -302,13 +316,15 @@ export type LinkDisplayProps = {
 export function LinkDisplay(props: LinkDisplayProps): JSX.Element {
     const { params } = props;
     const routeMeta = useRouteMeta();
+    const appletMeta = useAppletMeta();
+    const { controller } = useController();
 
     const pageId = React.useMemo(() => {
         return props?.pageId || routeMeta?.pageId;
     }, [props.pageId, routeMeta?.pageId]);
 
     const routeInfo = React.useMemo(() => {
-        return getRouteInfoByPageId(pageId);
+        return getRouteInfoByPageId(pageId, controller);
     }, [pageId]);
 
     let url: string = React.useMemo(() => {
@@ -328,8 +344,14 @@ export function LinkDisplay(props: LinkDisplayProps): JSX.Element {
 
     let appletUrl = React.useMemo(() => {
         if (props.appletId) {
-            let mounts = getMountsByPageId(pageId);
-            let mount = mounts.find((m) => m.pageId);
+            let mounts = getMountsByPageId(pageId, controller);
+
+            let mount: any = mounts.find((m) => m.appletId === props.appletId);
+
+            if (!mount) {
+                mount = mounts.find((m) => m.appletId === path.join(appletMeta?.featurePath, props?.appletId || ''));
+            }
+
             if (mount) {
                 const pat = new UrlPattern(mount.path);
                 return pat.stringify(params);
@@ -337,7 +359,7 @@ export function LinkDisplay(props: LinkDisplayProps): JSX.Element {
         }
 
         return '';
-    }, [pageId, props.appletId]);
+    }, [pageId, props.appletId, appletMeta?.featurePath]);
 
     const finalUrl = React.useMemo(() => {
         return path.join(url, appletUrl);
@@ -375,6 +397,7 @@ export function Link(props: { to?: string, children?: any }) {
 /* -------------------------------------------------------------------------- */
 
 export function Applet(props: { id: string }) {
+    const { controller } = useController();
     const { id, ...rest } = props;
     const applet = React.useMemo(() => {
         for (const applet of controller.applets) {
@@ -394,6 +417,33 @@ export function Applet(props: { id: string }) {
     )
 }
 
+export function Mount(props: { path: string }) {
+    const { controller } = useController();
+    const routeMeta = useRouteMeta();
+
+    const id = React.useMemo(() => {
+        if (routeMeta?.pageId) {
+            const mounts = getMountsByPageId(routeMeta?.pageId, controller);
+            const mount = mounts.find((m) => m.path === props.path);
+            if (mount) {
+                return mount.appletId
+            }
+        }
+
+        return null;
+    }, [routeMeta?.pageId, props.path]);
+
+    if (id) {
+        return (
+            <Applet id={id} />
+        )
+    }
+
+    return (
+        <></>
+    )
+}
+
 /* -------------------------------------------------------------------------- */
 /*                                   Mounts                                   */
 /* -------------------------------------------------------------------------- */
@@ -402,14 +452,16 @@ export type Mounts = {
     appletId: string,
     path: string,
     label: string,
+    link: boolean
     pageId: string
 }
 
-function getMountsByPageId(pageId: string): Mounts[] {
-    return controller.applets.reduce((acc, app) => {
+function getMountsByPageId(pageId: string, controller: FrontendController): Mounts[] {
+    const m = controller.applets.reduce((acc, app) => {
         const matchingMounts = app.mounts.filter((m: any) => m.pageId === pageId);
         acc.push(...matchingMounts.map((mount: any) => {
             return {
+                sort: 0,
                 ...mount,
                 label: mount?.label || app.defaultLabel,
                 path: (mount?.path || app.genricPath),
@@ -418,14 +470,24 @@ function getMountsByPageId(pageId: string): Mounts[] {
             }
         }));
         return acc;
-    }, []);
+    }, []).sort((a: any, b: any) => {
+        if (a.sort > b.sort) {
+            return 1;
+        } else if (a.sort < b.sort) {
+            return -1;
+        }
+        return 0;
+    });
+
+    return m;
 }
 
 export function useMounts() {
+    const { controller } = useController();
     const meta = useRouteMeta();
     const mounts: Mounts[] = React.useMemo(() => {
         if (meta?.pageId) {
-            return getMountsByPageId(meta?.pageId);
+            return getMountsByPageId(meta?.pageId, controller);
         }
 
         return [];
@@ -435,11 +497,15 @@ export function useMounts() {
 }
 
 export function App(props: { initialPath?: any, helmetContext?: any, controller?: FrontendController }) {
-    const route = createRoute(props?.initialPath);
+    const controller = React.useMemo(() => {
+        return props.controller || FrontendController.getInstance()
+    }, [props.controller]);
+    const route = createRoute(props?.initialPath, controller);
+
     return (
         <HelmetProvider context={props?.helmetContext}>
             <RouteProvider.Provider value={route}>
-                <ControllerContext.Provider value={props.controller || controller}>
+                <ControllerContext.Provider value={controller}>
                     <PageRenderer />
                 </ControllerContext.Provider>
             </RouteProvider.Provider>

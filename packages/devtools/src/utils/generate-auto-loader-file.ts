@@ -56,6 +56,7 @@ export function generateAutoloaderFile(cwd: string, target: 'frontend' | 'backen
                     importables.push({
                         path: null,
                         type: 'applet',
+                        featurePath: path.relative(path.join(cwd, 'src'), featurePath),
                         filePath: `./${relativePathToApplet}`,
                         fileId: Case.pascal(path.join(feature, appletFileName)),
                         resolvers: [
@@ -114,12 +115,12 @@ export function generateAutoloaderFile(cwd: string, target: 'frontend' | 'backen
                             )
                         }
     
-                        registerApplet(${JSON.stringify(importable)}, ${importable.fileId}_COMP);
+                        registerApplet(${JSON.stringify(importable)}, attachAppletMeta(${JSON.stringify(importable)}, ${importable.fileId}_COMP));
                         `
                     )
                 } else {
                     return `
-                        registerApplet(${JSON.stringify(importable)}, ${importable.fileId});
+                        registerApplet(${JSON.stringify(importable)}, attachAppletMeta(${JSON.stringify(importable)}, ${importable.fileId}));
                     `;
                 }
             }
@@ -149,14 +150,14 @@ export function generateAutoloaderFile(cwd: string, target: 'frontend' | 'backen
 
     const content = `
       import React, { lazy } from 'react';
-      import { registerView, registerApplet, controller, attachRouteMeta } from '@skyslit/ark-frontend';
+      import { registerView, registerApplet, controllerRef, attachRouteMeta, attachAppletMeta } from '@skyslit/ark-frontend';
       import './root.scss';
       import arkConfig from './ark.json';
 
       ${backendImportExpressions}
       ${importExpressions}
       
-      controller.arkConfig = arkConfig;
+      controllerRef.arkConfig = arkConfig;
       
       export function initializeModules() {
           ${backendregistrationExpressions}
