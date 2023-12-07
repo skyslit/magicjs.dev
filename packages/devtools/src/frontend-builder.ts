@@ -116,6 +116,9 @@ export class SPABuilder extends BuilderBase {
       context: cwd,
       mode,
       resolve: {
+        fallback: {
+          'path': require.resolve('path-browserify')
+        },
         modules: ['scripts', 'node_modules'],
         extensions: ['.json', '.ts', '.tsx', '.js', '.jsx'],
         alias: {
@@ -147,6 +150,7 @@ export class SPABuilder extends BuilderBase {
         }),
         new WatchExternalFilesPlugin({
           files: [
+            '**/config.json',
             './src/ark.json',
             '.env'
           ]

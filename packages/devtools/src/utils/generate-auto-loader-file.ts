@@ -16,13 +16,13 @@ export function generateAutoloaderFile(cwd: string, target: 'frontend' | 'backen
             return {
                 path: route.path,
                 type: 'view',
+                pageId: route?.pageId || null,
                 filePath: `./${path.relative(path.join(cwd, 'src'), path.join(cwd, 'src', route.view))}`,
                 fileId: Case.pascal(route.view)
             }
         });
 
         // Load applets
-        const d = [];
         if (fs.existsSync(path.join(cwd, 'src', 'features'))) {
             const dirs = fs.readdirSync(path.join(cwd, 'src', 'features'), { withFileTypes: true }).filter((f) => f.isDirectory()).map((f) => f.name);
             for (const feature of dirs) {
@@ -48,7 +48,9 @@ export function generateAutoloaderFile(cwd: string, target: 'frontend' | 'backen
                 const applets = glob.sync(['**/**.applet.tsx'], { dot: false, cwd: featurePath });
                 for (const appletFileName of applets) {
                     const relativePathToApplet = `${path.relative(path.join(cwd, 'src'), path.join(featurePath, appletFileName))}`;
-                    const appletConfig = config.applets.filter((a) => {
+                    const genricPath = path.join(path.dirname(relativePathToApplet), path.parse(path.basename(relativePathToApplet)).name);
+                    const defaultLabel = path.relative('features', genricPath);
+                    const appletConfig = config.applets.find((a) => {
                         return a.fileName === appletFileName
                     });
                     importables.push({
@@ -57,9 +59,13 @@ export function generateAutoloaderFile(cwd: string, target: 'frontend' | 'backen
                         filePath: `./${relativePathToApplet}`,
                         fileId: Case.pascal(path.join(feature, appletFileName)),
                         resolvers: [
-                            relativePathToApplet,
-                            ...(appletConfig || []).map((c) => c.alias)
-                        ]
+                            genricPath,
+                            appletConfig?.alias || null
+                        ].filter(Boolean),
+                        mounts: (appletConfig?.mounts || []),
+                        genricPath,
+                        defaultLabel,
+                        appletConfig
                     })
                 }
             }
@@ -90,11 +96,11 @@ export function generateAutoloaderFile(cwd: string, target: 'frontend' | 'backen
                         )
                         }
                 
-                        registerView('${importable.path}', '${importable.fileId}', ${importable.fileId}_COMP);
+                        registerView('${importable.path}', '${importable.fileId}', attachRouteMeta(${JSON.stringify(importable)}, ${importable.fileId}_COMP));
                     `;
                 } else {
                     return `
-                        registerView('${importable.path}', '${importable.fileId}', ${importable.fileId});
+                        registerView('${importable.path}', '${importable.fileId}', attachRouteMeta(${JSON.stringify(importable)}, ${importable.fileId}));
                     `;
                 }
                 
@@ -143,7 +149,7 @@ export function generateAutoloaderFile(cwd: string, target: 'frontend' | 'backen
 
     const content = `
       import React, { lazy } from 'react';
-      import { registerView, registerApplet, controller } from '@skyslit/ark-frontend';
+      import { registerView, registerApplet, controller, attachRouteMeta } from '@skyslit/ark-frontend';
       import './root.scss';
       import arkConfig from './ark.json';
 

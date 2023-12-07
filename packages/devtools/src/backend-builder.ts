@@ -54,7 +54,7 @@ export class BackendBuilder extends BuilderBase {
       // Should not take any babelrc file located in the project root
       babelrc: false,
       inputSourceMap: mode === 'development',
-      sourceMaps: mode === 'development' ? 'both' : false,
+      sourceMaps: mode === 'development' ? 'inline' : false,
       compact: mode === 'production',
       presets: [
         [
@@ -120,6 +120,7 @@ export class BackendBuilder extends BuilderBase {
       plugins: [
         new WatchExternalFilesPlugin({
           files: [
+            '**/config.json',
             './src/ark.json',
             '.env'
           ]

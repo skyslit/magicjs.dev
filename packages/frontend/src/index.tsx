@@ -1,9 +1,10 @@
 import React from 'react';
-import { createRoot } from 'react-dom/client';
+import { hydrateRoot } from 'react-dom/client';
 import { HelmetProvider } from 'react-helmet-async';
 import UrlPattern from 'url-pattern';
 import { BackendRemote } from './backend';
 import axios, { Axios } from 'axios';
+import path from 'path';
 
 function* infinite() {
     let index = 0;
@@ -157,6 +158,11 @@ export function useAxios() {
     return controller.client;
 }
 
+export function useController() {
+    const controller = React.useContext(ControllerContext);
+    return { controller }
+}
+
 /* -------------------------------------------------------------------------- */
 /*                                    View                                    */
 /* -------------------------------------------------------------------------- */
@@ -189,13 +195,43 @@ type RouteApi = {
     pathname: string,
     match?: any,
     component?: any
+    push: (path: string) => void
+    isInitialRender: boolean
 }
 
 // @ts-ignore
 const RouteProvider = React.createContext<RouteApi>(null);
+const RouteMetaContext = React.createContext<any>(null);
+
+export function attachRouteMeta(routeMeta: any, Comp: any) {
+    return (props: any) => (
+        <RouteMetaContext.Provider value={routeMeta}>
+            <Comp {...props} />
+        </RouteMetaContext.Provider>
+    )
+}
+
+export function useRouteMeta() {
+    return React.useContext(RouteMetaContext);
+}
 
 function createRoute(defaultRoot: string): RouteApi {
+    const { controller } = useController();
+    const [isInitialRender, setIsInitialRender] = React.useState(true);
     const [pathname, setPathname] = React.useState(defaultRoot || globalThis?.window?.location?.pathname);
+
+    React.useEffect(() => {
+        window.onpopstate = () => {
+            setIsInitialRender(false);
+            setPathname(window.location.pathname);
+        }
+    }, [])
+
+    const push = React.useCallback((path: string) => {
+        window.history.pushState({}, '', path);
+        setIsInitialRender(false);
+        setPathname(path);
+    }, []);
 
     const [match, component] = React.useMemo(() => {
         let match: any;
@@ -216,7 +252,9 @@ function createRoute(defaultRoot: string): RouteApi {
     return {
         pathname,
         match,
-        component
+        component,
+        push,
+        isInitialRender
     }
 }
 
@@ -225,36 +263,55 @@ export function useRoute(): RouteApi {
 }
 
 function PageRenderer(props: any) {
-    const { component } = useRoute();
-    
+    const { component, isInitialRender } = useRoute();
 
-    if (!component) {
+    if (!component?.Component) {
         return (
             <div>Not Found</div>
         )
     }
 
+    if (isInitialRender === false) {
+        return (
+            <React.Suspense fallback={<div>Lazy Loading</div>}>
+                <component.Component {...props} />
+            </React.Suspense>
+        )
+    }
+
     return (
-        <component.Component />
+        <component.Component {...props} />
     )
 }
 
+function getRouteInfoByPageId(pageId: string) {
+    if (Array.isArray(controller?.arkConfig?.routes)) {
+        return controller.arkConfig.routes.find((r: any) => r.pageId === pageId);
+    }
+
+    return null;
+}
+
 export type LinkDisplayProps = {
-    pageId: string,
+    pageId?: string,
+    appletId?: string
     params?: any,
     children?: (props: { url: string }) => JSX.Element
 }
-export function LinkDisplay(props: LinkDisplayProps): JSX.Element {
-    const { pageId, params } = props;
-    const routeInfo = React.useMemo(() => {
-        if (Array.isArray(controller?.arkConfig?.routes)) {
-            return controller.arkConfig.routes.find((r: any) => r.pageId === pageId);
-        }
 
-        return null;
+export function LinkDisplay(props: LinkDisplayProps): JSX.Element {
+    const { params } = props;
+    const routeMeta = useRouteMeta();
+
+    const pageId = React.useMemo(() => {
+        return props?.pageId || routeMeta?.pageId;
+    }, [props.pageId, routeMeta?.pageId]);
+
+    const routeInfo = React.useMemo(() => {
+        return getRouteInfoByPageId(pageId);
     }, [pageId]);
 
-    const url: string = React.useMemo(() => {
+    let url: string = React.useMemo(() => {
         if (routeInfo) {
             const { path } = routeInfo;
             try {
@@ -266,14 +323,47 @@ export function LinkDisplay(props: LinkDisplayProps): JSX.Element {
             }
         }
 
-        return null as any;
+        return '';
     }, [routeInfo, params]);
 
-    if (url && props?.children) {
-        return props.children({ url })
+    let appletUrl = React.useMemo(() => {
+        if (props.appletId) {
+            let mounts = getMountsByPageId(pageId);
+            let mount = mounts.find((m) => m.pageId);
+            if (mount) {
+                const pat = new UrlPattern(mount.path);
+                return pat.stringify(params);
+            }
+        }
+
+        return '';
+    }, [pageId, props.appletId]);
+
+    const finalUrl = React.useMemo(() => {
+        return path.join(url, appletUrl);
+    }, [url, appletUrl])
+
+    if (finalUrl && props?.children) {
+        return props.children({ url: finalUrl })
     }
 
     return (<></>)
+}
+
+export function Link(props: { to?: string, children?: any }) {
+    const { to } = props;
+    const { push } = useRoute();
+
+    return (
+        <a href={to} onClick={(e) => {
+            e.preventDefault();
+            if (to) {
+                push(to);
+            }
+        }}>
+            {props.children}
+        </a>
+    )
 }
 
 /* -------------------------------------------------------------------------- */
@@ -304,6 +394,46 @@ export function Applet(props: { id: string }) {
     )
 }
 
+/* -------------------------------------------------------------------------- */
+/*                                   Mounts                                   */
+/* -------------------------------------------------------------------------- */
+
+export type Mounts = {
+    appletId: string,
+    path: string,
+    label: string,
+    pageId: string
+}
+
+function getMountsByPageId(pageId: string): Mounts[] {
+    return controller.applets.reduce((acc, app) => {
+        const matchingMounts = app.mounts.filter((m: any) => m.pageId === pageId);
+        acc.push(...matchingMounts.map((mount: any) => {
+            return {
+                ...mount,
+                label: mount?.label || app.defaultLabel,
+                path: (mount?.path || app.genricPath),
+                resolvers: app.resolvers,
+                appletId: app.resolvers[0]
+            }
+        }));
+        return acc;
+    }, []);
+}
+
+export function useMounts() {
+    const meta = useRouteMeta();
+    const mounts: Mounts[] = React.useMemo(() => {
+        if (meta?.pageId) {
+            return getMountsByPageId(meta?.pageId);
+        }
+
+        return [];
+    }, [meta?.pageId]);
+
+    return { current: mounts }
+}
+
 export function App(props: { initialPath?: any, helmetContext?: any, controller?: FrontendController }) {
     const route = createRoute(props?.initialPath);
     return (
@@ -320,7 +450,6 @@ export function App(props: { initialPath?: any, helmetContext?: any, controller?
 export function startApp() {
     const rootElem = document.getElementById('root');
     if (rootElem) {
-        const root = createRoot(rootElem);
-        root.render(<App />);
+        hydrateRoot(rootElem, <App />);
     }
 }
