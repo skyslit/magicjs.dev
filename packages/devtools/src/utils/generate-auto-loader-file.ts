@@ -148,10 +148,12 @@ export function generateAutoloaderFile(cwd: string, target: 'frontend' | 'backen
         }).join('\n');
     }
 
+    let arkBackendImportSt: string = '';
     let backendImportExpressions: string = '';
     let backendregistrationExpressions: string = '';
 
     if (target === 'backend') {
+        arkBackendImportSt = `import { registerBackendComponent } from '@skyslit/ark-backend'`;
         // Load all backend modules
         const entries = glob.sync(['src/**/**.server.tsx'], { dot: false, cwd });
 
@@ -172,6 +174,7 @@ export function generateAutoloaderFile(cwd: string, target: 'frontend' | 'backen
       import { registerView, registerApplet, controllerRef, attachRouteMeta, attachAppletMeta } from '@skyslit/ark-frontend';
       import './root.scss';
       import arkConfig from './ark.json';
+      ${arkBackendImportSt}
 
       ${backendImportExpressions}
       ${importExpressions}
