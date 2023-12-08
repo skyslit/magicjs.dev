@@ -512,11 +512,17 @@ function getMountsByPageId(pageId: string, controller: FrontendController): Moun
     const m = controller.applets.reduce((acc, app) => {
         const matchingMounts = app.mounts.filter((m: any) => m.pageId === pageId);
         acc.push(...matchingMounts.map((mount: any) => {
+            let pathVal = (mount?.path || app.genricPath);
+
+            if (mount?.pathPostfix) {
+                pathVal = path.posix.join(pathVal, mount?.pathPostfix);
+            }
+
             return {
                 sort: 0,
                 ...mount,
                 label: mount?.label || app.defaultLabel,
-                path: (mount?.path || app.genricPath),
+                path: pathVal,
                 resolvers: app.resolvers,
                 appletId: app.resolvers[0]
             }
