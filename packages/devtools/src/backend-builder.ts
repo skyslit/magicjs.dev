@@ -20,7 +20,7 @@ export class BackendBuilder extends BuilderBase {
     super();
     this.entryFilePath = entryFilePath;
     this.virtualModules = new VirtualModulesPlugin({
-      [`src/server.tsx`]: `
+      [path.join('src', 'server.tsx')]: `
         // @ts-nocheck
         import React from 'react';
         import ReactDOM from 'react-dom';
@@ -37,7 +37,7 @@ export class BackendBuilder extends BuilderBase {
   initCompiler(opts: ConfigurationOptions) {
     this.compiler.hooks.compilation.tap('MyPlugin', (compilation) => {
       const content = generateAutoloaderFile(opts.cwd, 'backend');
-      this.virtualModules.writeModule('src/auto-loader.tsx', content);
+      this.virtualModules.writeModule(path.join('src', 'auto-loader.tsx'), content);
     });
   }
 

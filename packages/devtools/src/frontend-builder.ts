@@ -28,7 +28,7 @@ export class SPABuilder extends BuilderBase {
     this.appId = id;
     this.appFilePath = appFilePath;
     this.virtualModules = new VirtualModulesPlugin({
-      [`src/${this.appId}.tsx`]: `
+      [path.join('src', `${this.appId}.tsx`)]: `
         // @ts-nocheck
         import React from 'react';
         import ReactDOM from 'react-dom';
@@ -73,7 +73,7 @@ export class SPABuilder extends BuilderBase {
   initCompiler(opts: ConfigurationOptions) {
     this.compiler.hooks.compilation.tap('MyPlugin', (compilation) => {
       const content = generateAutoloaderFile(opts.cwd, 'frontend');
-      this.virtualModules.writeModule('src/auto-loader.tsx', content);
+      this.virtualModules.writeModule(path.join('src', 'auto-loader.tsx'), content);
     });
   }
 
