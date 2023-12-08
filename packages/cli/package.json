@@ -1,6 +1,6 @@
 {
   "name": "@skyslit/ark",
-  "version": "3.0.21",
+  "version": "3.0.22",
   "description": "",
   "main": "build/index.js",
   "bin": {
@@ -14,7 +14,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@skyslit/ark-devtools": "^3.0.21",
+    "@skyslit/ark-devtools": "^3.0.22",
     "@types/follow-redirects": "^1.14.4",
     "axios": "^1.6.2",
     "command-line-args": "^5.2.1",
