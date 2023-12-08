@@ -10,7 +10,7 @@ export default function (source) {
 
     const isARemoteFile = String(rPath).endsWith('.server.tsx');
     if (isARemoteFile === true) {
-        const backendModuleId = extractBackendModuleId(cwd, path.relative(cwd, rPath));
+        const backendModuleId = extractBackendModuleId(cwd, path.posix.relative(cwd, rPath));
         return `
         import { controllerRef } from '@skyslit/ark-frontend';
         export default async function (...args: any[]) {
