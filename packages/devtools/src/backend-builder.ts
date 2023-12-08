@@ -3,11 +3,7 @@ import nodeExternals from 'webpack-node-externals';
 import { BuilderBase, ConfigurationOptions } from './builder-base';
 import path from 'path';
 import WatchExternalFilesPlugin from 'webpack-watch-files-plugin';
-import fs from 'fs';
-import Case from 'case';
 import VirtualModulesPlugin from 'webpack-virtual-modules';
-import glob from 'fast-glob';
-import { extractBackendModuleId } from './utils/backend-module-extractor';
 import { generateAutoloaderFile } from './utils/generate-auto-loader-file';
 
 /**
@@ -29,8 +25,8 @@ export class BackendBuilder extends BuilderBase {
         import React from 'react';
         import ReactDOM from 'react-dom';
         import { startApp } from '@skyslit/ark-frontend';
-        import { initializeModules } from './auto-loader.tsx';
-        import runApp from './app.tsx';
+        import { initializeModules } from '.${path.sep}auto-loader.tsx';
+        import runApp from '.${path.sep}app.tsx';
 
         initializeModules();
         runApp();

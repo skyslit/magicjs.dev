@@ -2,14 +2,13 @@ import { Configuration } from 'webpack';
 import { BuilderBase, ConfigurationOptions } from './builder-base';
 import path from 'path';
 import HTMLWebpackPlugin from 'html-webpack-plugin';
-import { GhostFileActions, createGhostFile } from './ghost-file';
+import { GhostFileActions } from './ghost-file';
 import MiniCssExtractPlugin from 'mini-css-extract-plugin';
 import TerserPlugin from 'terser-webpack-plugin';
 import Case from 'case';
 import fs from 'fs';
 import WatchExternalFilesPlugin from 'webpack-watch-files-plugin';
 import VirtualModulesPlugin from 'webpack-virtual-modules';
-import glob from 'fast-glob';
 import { generateAutoloaderFile } from './utils/generate-auto-loader-file';
 
 /**
@@ -34,7 +33,7 @@ export class SPABuilder extends BuilderBase {
         import React from 'react';
         import ReactDOM from 'react-dom';
         import { startApp } from '@skyslit/ark-frontend';
-        import { initializeModules } from './auto-loader.tsx';
+        import { initializeModules } from '.${path.sep}auto-loader.tsx';
 
         initializeModules();
         startApp();
@@ -59,7 +58,7 @@ export class SPABuilder extends BuilderBase {
     if (Array.isArray(arkJSON.routes)) {
       const importables = arkJSON.routes.map((route) => {
         return {
-          filePath: `./${path.relative(path.join(opts.cwd, 'src'), path.join(opts.cwd, 'src', route.view))}`,
+          filePath: `.${path.sep}${path.relative(path.join(opts.cwd, 'src'), path.join(opts.cwd, 'src', route.view))}`,
           fileId: Case.camel(route.view)
         }
       });

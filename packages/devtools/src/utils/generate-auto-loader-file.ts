@@ -34,7 +34,7 @@ export function generateAutoloaderFile(cwd: string, target: 'frontend' | 'backen
                 path: route.path,
                 type: 'view',
                 pageId: route?.pageId || null,
-                filePath: `./${path.relative(path.join(cwd, 'src'), path.join(cwd, 'src', route.view))}`,
+                filePath: `.${path.sep}${path.relative(path.join(cwd, 'src'), path.join(cwd, 'src', route.view))}`,
                 fileId: Case.pascal(route.view)
             }
         });
@@ -74,7 +74,7 @@ export function generateAutoloaderFile(cwd: string, target: 'frontend' | 'backen
                         path: null,
                         type: 'applet',
                         featurePath: path.relative(path.join(cwd, 'src'), featurePath),
-                        filePath: `./${relativePathToApplet}`,
+                        filePath: `.${path.sep}${relativePathToApplet}`,
                         fileId: Case.pascal(path.join(feature, appletFileName)),
                         resolvers: [
                             genricPath,
@@ -159,7 +159,7 @@ export function generateAutoloaderFile(cwd: string, target: 'frontend' | 'backen
 
         const backendImportables = entries.map((filePath) => {
             return {
-                filePath: `./${path.relative(path.join(cwd, 'src'), path.join(cwd, filePath))}`,
+                filePath: `.${path.sep}${path.relative(path.join(cwd, 'src'), path.join(cwd, filePath))}`,
                 moduleVarName: Case.camel(path.relative(path.join(cwd, 'src', 'backend'), path.join(cwd, filePath))),
                 moduleId: extractBackendModuleId(cwd, filePath)
             }
@@ -172,8 +172,8 @@ export function generateAutoloaderFile(cwd: string, target: 'frontend' | 'backen
     const content = `
       import React, { lazy } from 'react';
       import { registerView, registerApplet, controllerRef, attachRouteMeta, attachAppletMeta } from '@skyslit/ark-frontend';
-      import './root.scss';
-      import arkConfig from './ark.json';
+      import '.${path.sep}root.scss';
+      import arkConfig from '.${path.sep}ark.json';
       ${arkBackendImportSt}
 
       ${backendImportExpressions}
