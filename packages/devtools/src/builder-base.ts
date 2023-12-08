@@ -54,6 +54,10 @@ export class BuilderBase extends EventEmitter {
             },
             opts
         );
+
+        // Normalise cwd to support win32
+        this.options.cwd = this.options.cwd.split(path.sep).join(path.posix.sep);
+
         const buildConfiguration = this.getConfiguration(this.options);
         if (!buildConfiguration) {
             throw new Error('webpack configuration should not be null');

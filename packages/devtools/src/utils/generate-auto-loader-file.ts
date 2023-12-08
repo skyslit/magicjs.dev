@@ -43,7 +43,7 @@ export function generateAutoloaderFile(cwd: string, target: 'frontend' | 'backen
         if (fs.existsSync(path.join(cwd, 'src', 'features'))) {
             const dirs = fs.readdirSync(path.join(cwd, 'src', 'features'), { withFileTypes: true }).filter((f) => f.isDirectory()).map((f) => f.name);
             for (const feature of dirs) {
-                const featurePath = path.join(cwd, 'src', 'features', feature);
+                const featurePath = path.posix.join(cwd, 'src', 'features', feature);
                 let config: any = null;
 
                 try {

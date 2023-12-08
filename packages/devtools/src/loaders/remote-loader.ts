@@ -2,9 +2,15 @@ import { extractBackendModuleId } from '../utils/backend-module-extractor';
 import path from 'path';
 
 export default function (source) {
-    const isARemoteFile = String(this.resourcePath).endsWith('.server.tsx');
+    let rPath = this.resourcePath;
+    let cwd = process.cwd();
+
+    rPath = rPath.split(path.sep).join(path.posix.sep);
+    cwd = cwd.split(path.sep).join(path.posix.sep);
+
+    const isARemoteFile = String(rPath).endsWith('.server.tsx');
     if (isARemoteFile === true) {
-        const backendModuleId = extractBackendModuleId(process.cwd(), path.relative(process.cwd(), this.resourcePath));
+        const backendModuleId = extractBackendModuleId(cwd, path.relative(cwd, rPath));
         return `
         import { controllerRef } from '@skyslit/ark-frontend';
         export default async function (...args: any[]) {
