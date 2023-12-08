@@ -4,7 +4,9 @@ import { HelmetProvider } from 'react-helmet-async';
 import UrlPattern from 'url-pattern';
 import { BackendRemote } from './backend';
 import axios, { Axios } from 'axios';
-import path from 'path';
+import _path from 'path';
+
+const path = _path.posix;
 
 function* infinite() {
     let index = 0;
