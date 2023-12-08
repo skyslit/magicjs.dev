@@ -276,6 +276,53 @@ export function useRoute(): RouteApi {
     return React.useContext(RouteProvider);
 }
 
+export function useParams() {
+    const { pathname } = useRoute();
+    const routeMeta = useRouteMeta();
+    const appletMeta = useAppletMeta();
+    const { controller } = useController();
+
+    const routeInfo = React.useMemo(() => {
+        return getRouteInfoByPageId(routeMeta?.pageId, controller);
+    }, [pathname, routeMeta?.pageId]);
+
+    let url: string = React.useMemo(() => {
+        if (routeInfo) {
+            const { path } = routeInfo;
+            try {
+                return path
+            } catch (e) {
+                console.error(e);
+                return path;
+            }
+        }
+
+        return '';
+    }, [routeInfo]);
+
+    let appletUrl = React.useMemo(() => {
+        if (appletMeta) {
+            let mounts = getMountsByPageId(routeMeta?.pageId, controller);
+            let currentMount = mounts.find((m) => m.appletId === appletMeta?.genricPath);
+            return currentMount?.path || '';
+        }
+
+        return '';
+    }, [pathname, routeMeta?.pageId]);
+
+
+    const finalUrl = React.useMemo(() => {
+        return path.join(url, appletUrl);
+    }, [url, appletUrl]);
+
+    const params = React.useMemo(() => {
+        const pattern = new UrlPattern(finalUrl);
+        return pattern.match(pathname);
+    }, [finalUrl, pathname]);
+
+    return params;
+}
+
 function PageRenderer(props: any) {
     const { component, isInitialRender } = useRoute();
 
@@ -424,7 +471,10 @@ export function Mount(props: { path: string }) {
     const id = React.useMemo(() => {
         if (routeMeta?.pageId) {
             const mounts = getMountsByPageId(routeMeta?.pageId, controller);
-            const mount = mounts.find((m) => m.path === props.path);
+            const mount = mounts.find((m) => {
+                const pattern = new UrlPattern(m.path);
+                return Boolean(pattern.match(props.path));
+            });
             if (mount) {
                 return mount.appletId
             }
@@ -494,6 +544,24 @@ export function useMounts() {
     }, [meta?.pageId]);
 
     return { current: mounts }
+}
+
+/* -------------------------------------------------------------------------- */
+/*                                    Auth                                    */
+/* -------------------------------------------------------------------------- */
+
+export function Protected(props: any) {
+    const { current } = useLogin();
+
+    if (current.isAuthenticated === false) {
+        return (
+            <div style={{ height: '100vh', width: '100vw', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                <h1 className='text-5xl'>401 Unauthorized</h1>
+            </div>
+        )
+    }
+
+    return props.children;
 }
 
 export function App(props: { initialPath?: any, helmetContext?: any, controller?: FrontendController }) {
