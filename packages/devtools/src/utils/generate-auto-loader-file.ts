@@ -34,7 +34,7 @@ export function generateAutoloaderFile(cwd: string, target: 'frontend' | 'backen
                 path: route.path,
                 type: 'view',
                 pageId: route?.pageId || null,
-                filePath: `.${path.sep}${path.relative(path.join(cwd, 'src'), path.join(cwd, 'src', route.view))}`,
+                filePath: `./${path.posix.relative(path.posix.join(cwd, 'src'), path.posix.join(cwd, 'src', route.view))}`,
                 fileId: Case.pascal(route.view)
             }
         });
@@ -64,18 +64,18 @@ export function generateAutoloaderFile(cwd: string, target: 'frontend' | 'backen
 
                 const applets = glob.sync(['**/**.applet.tsx'], { dot: false, cwd: featurePath });
                 for (const appletFileName of applets) {
-                    const relativePathToApplet = `${path.relative(path.join(cwd, 'src'), path.join(featurePath, appletFileName))}`;
-                    const genricPath = path.join(path.dirname(relativePathToApplet), path.parse(path.basename(relativePathToApplet)).name);
-                    const defaultLabel = path.relative('features', genricPath);
+                    const relativePathToApplet = `${path.posix.relative(path.posix.join(cwd, 'src'), path.posix.join(featurePath, appletFileName))}`;
+                    const genricPath = path.posix.join(path.posix.dirname(relativePathToApplet), path.posix.parse(path.posix.basename(relativePathToApplet)).name);
+                    const defaultLabel = path.posix.relative('features', genricPath);
                     const appletConfig = config.applets.find((a) => {
                         return a.fileName === appletFileName
                     });
                     importables.push({
                         path: null,
                         type: 'applet',
-                        featurePath: path.relative(path.join(cwd, 'src'), featurePath),
-                        filePath: `.${path.sep}${relativePathToApplet}`,
-                        fileId: Case.pascal(path.join(feature, appletFileName)),
+                        featurePath: path.posix.relative(path.posix.join(cwd, 'src'), featurePath),
+                        filePath: `./${relativePathToApplet}`,
+                        fileId: Case.pascal(path.posix.join(feature, appletFileName)),
                         resolvers: [
                             genricPath,
                             appletConfig?.alias || null
@@ -159,8 +159,8 @@ export function generateAutoloaderFile(cwd: string, target: 'frontend' | 'backen
 
         const backendImportables = entries.map((filePath) => {
             return {
-                filePath: `.${path.sep}${path.relative(path.join(cwd, 'src'), path.join(cwd, filePath))}`,
-                moduleVarName: Case.camel(path.relative(path.join(cwd, 'src', 'backend'), path.join(cwd, filePath))),
+                filePath: `./${path.posix.relative(path.posix.join(cwd, 'src'), path.posix.join(cwd, filePath))}`,
+                moduleVarName: Case.camel(path.posix.relative(path.posix.join(cwd, 'src', 'backend'), path.posix.join(cwd, filePath))),
                 moduleId: extractBackendModuleId(cwd, filePath)
             }
         });
@@ -172,8 +172,8 @@ export function generateAutoloaderFile(cwd: string, target: 'frontend' | 'backen
     const content = `
       import React, { lazy } from 'react';
       import { registerView, registerApplet, controllerRef, attachRouteMeta, attachAppletMeta } from '@skyslit/ark-frontend';
-      import '.${path.sep}root.scss';
-      import arkConfig from '.${path.sep}ark.json';
+      import './root.scss';
+      import arkConfig from './ark.json';
       ${arkBackendImportSt}
 
       ${backendImportExpressions}

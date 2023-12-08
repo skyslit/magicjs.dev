@@ -25,8 +25,8 @@ export class BackendBuilder extends BuilderBase {
         import React from 'react';
         import ReactDOM from 'react-dom';
         import { startApp } from '@skyslit/ark-frontend';
-        import { initializeModules } from '.${path.sep}auto-loader.tsx';
-        import runApp from '.${path.sep}app.tsx';
+        import { initializeModules } from './auto-loader.tsx';
+        import runApp from './app.tsx';
 
         initializeModules();
         runApp();

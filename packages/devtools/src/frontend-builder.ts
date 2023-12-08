@@ -33,7 +33,7 @@ export class SPABuilder extends BuilderBase {
         import React from 'react';
         import ReactDOM from 'react-dom';
         import { startApp } from '@skyslit/ark-frontend';
-        import { initializeModules } from '.${path.sep}auto-loader.tsx';
+        import { initializeModules } from './auto-loader.tsx';
 
         initializeModules();
         startApp();
