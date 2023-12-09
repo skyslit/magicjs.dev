@@ -5,6 +5,12 @@ import commandLineArgs from 'command-line-args';
 import { publish } from './publish';
 import { addFeature } from './add-feature';
 
+process.on('SIGINT', function () {
+    console.log("\nGracefully shutting down from SIGINT (Ctrl-C)");
+    // some other closing procedures go here
+    process.exit(0);
+});
+
 const optionDefinitions = [
     { name: 'start', alias: 's', type: Boolean },
     { name: 'build', alias: 'b', type: Boolean },

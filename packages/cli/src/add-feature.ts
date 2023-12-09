@@ -4,8 +4,8 @@ import { https } from 'follow-redirects';
 import gunzip from 'gunzip-maybe';
 import tar from 'tar-fs';
 
-export async function addFeature(featureName: string, packageId: string) {
-    const cwd = process.cwd();
+export async function addFeature(featureName: string, packageId: string, _cwd?: string) {
+    const cwd = _cwd || process.cwd();
     const TEMP_FOLDER = path.join(cwd, '.temp');
     const TARGET_TAR_FILE_PATH = path.join(TEMP_FOLDER, 'archive.tar.gz');
 
