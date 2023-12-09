@@ -595,3 +595,18 @@ export function startApp() {
         hydrateRoot(rootElem, <App />);
     }
 }
+
+/* -------------------------------------------------------------------------- */
+/*                                   Config                                   */
+/* -------------------------------------------------------------------------- */
+
+export function loadConfig(config: any) {
+    const properties = config?.properties || [];
+
+    return {
+        getValue(propertyName: string, defaultVal?: any): any {
+            const p = properties.find((p: any) => p?.name === propertyName);
+            return p?.value || defaultVal;
+        }
+    }
+}

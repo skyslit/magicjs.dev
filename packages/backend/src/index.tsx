@@ -348,3 +348,18 @@ export function data(collectionName: string, dbName?: string): Collection {
 
     return instance.database.db(dbName).collection(collectionName);
 }
+
+/* -------------------------------------------------------------------------- */
+/*                                   Config                                   */
+/* -------------------------------------------------------------------------- */
+
+export function loadConfig(config: any) {
+    const properties = config?.properties || [];
+
+    return {
+        getValue(propertyName: string, defaultVal?: any): any {
+            const p = properties.find((p: any) => p?.name === propertyName);
+            return p?.value || defaultVal;
+        }
+    }
+}
