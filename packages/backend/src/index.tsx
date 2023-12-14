@@ -14,6 +14,7 @@ import { MongoClient, Collection } from 'mongodb';
 import jwt from 'jsonwebtoken';
 import moment from 'moment';
 import utilsImp from './utils';
+import UrlPattern from 'url-pattern';
 
 export const utils = utilsImp;
 
@@ -199,70 +200,93 @@ export async function createServer(handler?: (instance: ServerInstance) => void 
     }
 
     instance.app.get('/*', (req, res, next) => {
-        let helmetContext: any = {};
-        const htmlFilePath = path.join(__dirname, '../client.html');
-        const htmlContent = fs.readFileSync(htmlFilePath, 'utf-8');
-        const htmlContentNode = HTMLParser.parse(htmlContent);
+        const config = controllerRef.arkConfig;
 
-        const passThruContext = extractFrontendContext(req.requestContext);
-        const controller = new FrontendController();
+        if (Array.isArray(config.routes)) {
+            const currentPath = req.path;
+            const matchingPath = config.routes.find((route: any) => {
+                const pattern = new UrlPattern(route.path);
+                return pattern.match(currentPath);
+            });
 
-        controller.applets = controllerRef.applets;
-        controller.arkConfig = controllerRef.arkConfig;
-        controller.registeredComponents = controllerRef.registeredComponents;
+            if (matchingPath) {
+                // TODO: Do this only for dev env (BUT CURRENTLY ENABLED FOR ALL)
+                res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate"); // HTTP 1.1.
+                res.setHeader("Pragma", "no-cache"); // HTTP 1.0.
+                res.setHeader("Expires", "0"); // Proxies.
 
-        controller.context = passThruContext as any;
-        
-        const appStr = ReactDOMServer.renderToString(<App helmetContext={helmetContext} initialPath={req.path} controller={controller} />);
-        let headContent: string[] = [];
+                const shouldRenderOnServer = matchingPath?.ssr === true
 
-        try {
-            headContent = Object.keys(helmetContext?.helmet || {}).reduce(
-                (acc: any[], item) => {
-                    let c: string;
+                const htmlFilePath = path.join(__dirname, '../client.html');
+                const htmlContent = fs.readFileSync(htmlFilePath, 'utf-8');
+                const htmlContentNode = HTMLParser.parse(htmlContent);
+
+                const passThruContext = extractFrontendContext(req.requestContext);
+                const controller = new FrontendController();
+
+                controller.applets = controllerRef.applets;
+                controller.arkConfig = controllerRef.arkConfig;
+                controller.registeredComponents = controllerRef.registeredComponents;
+
+                controller.context = passThruContext as any;
+
+                if (shouldRenderOnServer === true) {
+                    let helmetContext: any = {};
+                    const serverRenderedContent = ReactDOMServer.renderToString(<App helmetContext={helmetContext} initialPath={req.path} controller={controller} />);
+                    let headContent: string[] = [];
                     try {
-                        c = helmetContext.helmet[item].toString();
+                        headContent = Object.keys(helmetContext?.helmet || {}).reduce(
+                            (acc: any[], item) => {
+                                let c: string;
+                                try {
+                                    c = helmetContext.helmet[item].toString();
+                                } catch (e) {
+                                    console.error(e);
+                                }
+    
+                                // @ts-ignore
+                                if (c) {
+                                    acc.push(c);
+                                }
+    
+                                return acc;
+                            },
+                            []
+                        );
+    
+                        let i = 0;
+                        for (i = 0; i < headContent.length; i++) {
+                            const headNode = htmlContentNode
+                                .querySelector('head');
+    
+                            if (headNode) {
+                                headNode.appendChild(HTMLParser.parse(headContent[i]));
+                            }
+                        }
                     } catch (e) {
                         console.error(e);
                     }
 
-                    // @ts-ignore
-                    if (c) {
-                        acc.push(c);
+
+                    const rootDiv = htmlContentNode.querySelector('#root');
+                    if (rootDiv) {
+                        rootDiv.set_content(serverRenderedContent);
                     }
-
-                    return acc;
-                },
-                []
-            );
-
-            let i = 0;
-            for (i = 0; i < headContent.length; i++) {
-                const headNode = htmlContentNode
-                    .querySelector('head');
-
-                if (headNode) {
-                    headNode.appendChild(HTMLParser.parse(headContent[i]));
                 }
+
+                const headCon = htmlContentNode.querySelector('head');
+                if (headCon) {
+                    const scriptNode = HTMLParser.parse(
+                        `<script>globalThis.___ark_hydrated_state___=${JSON.stringify({...passThruContext, shouldHydrate: shouldRenderOnServer})};</script>`
+                    );
+                    headCon.appendChild(scriptNode);
+                }
+
+                res.send(htmlContentNode.toString());
+                return;
             }
-        } catch (e) {
-            console.error(e);
         }
-
-        const headCon = htmlContentNode.querySelector('head');
-        if (headCon) {
-            const scriptNode = HTMLParser.parse(
-                `<script>globalThis.___ark_hydrated_state___=${JSON.stringify(passThruContext)};</script>`
-            );
-            headCon.appendChild(scriptNode);
-        }
-
-        const rootDiv = htmlContentNode.querySelector('#root');
-        if (rootDiv) {
-            rootDiv.set_content(appStr);
-        }
-
-        res.send(htmlContentNode.toString());
+        next();
     })
 
     instance.app.listen(instance.port, undefined as any, undefined as any, () => {

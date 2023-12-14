@@ -1,5 +1,5 @@
 import React from 'react';
-import { hydrateRoot } from 'react-dom/client';
+import { hydrateRoot, createRoot } from 'react-dom/client';
 import { HelmetProvider } from 'react-helmet-async';
 import UrlPattern from 'url-pattern';
 import { BackendRemote } from './backend';
@@ -592,7 +592,13 @@ export function App(props: { initialPath?: any, helmetContext?: any, controller?
 export function startApp() {
     const rootElem = document.getElementById('root');
     if (rootElem) {
-        hydrateRoot(rootElem, <App />);
+        const shouldHydrate = (globalThis as any)?.___ark_hydrated_state___?.shouldHydrate === true;
+        if (shouldHydrate === true) {
+            hydrateRoot(rootElem, <App />);
+        } else {
+            const root = createRoot(rootElem);
+            root.render(<App />);
+        }
     }
 }
 

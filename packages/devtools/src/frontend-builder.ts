@@ -110,7 +110,7 @@ export class SPABuilder extends BuilderBase {
     };
 
     return {
-      cache: false,
+      cache: true,
       devtool: mode === 'development' ? 'source-map' : false,
       context: cwd,
       mode,
@@ -212,9 +212,17 @@ export class SPABuilder extends BuilderBase {
           {
             test: this.getStyleTestExp(),
             use: [
-              {
-                loader: MiniCssExtractPlugin.loader,
-              },
+              (() => {
+                if (mode === 'development') {
+                  return {
+                    loader: require.resolve('style-loader')
+                  }
+                }
+
+                return {
+                  loader: MiniCssExtractPlugin.loader
+                }
+              })(),
               {
                 loader: require.resolve('css-loader'),
               },
