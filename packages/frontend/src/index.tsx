@@ -326,12 +326,12 @@ export function useParams() {
 }
 
 function PageRenderer(props: any) {
-    const { component, isInitialRender } = useRoute();
+    const { component, isInitialRender, pathname } = useRoute();
 
     if (!component?.Component) {
         return (
-            <div>Not Found</div>
-        )
+            <iframe style={{ width: '100vw', height: '100vh' }} src={`https://mern.ai/templates/__notfound?path=${pathname}`} />
+        );
     }
 
     if (isInitialRender === false) {

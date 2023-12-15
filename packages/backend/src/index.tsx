@@ -209,83 +209,82 @@ export async function createServer(handler?: (instance: ServerInstance) => void 
                 return pattern.match(currentPath);
             });
 
-            if (matchingPath) {
-                // TODO: Do this only for dev env (BUT CURRENTLY ENABLED FOR ALL)
-                res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate"); // HTTP 1.1.
-                res.setHeader("Pragma", "no-cache"); // HTTP 1.0.
-                res.setHeader("Expires", "0"); // Proxies.
+            // TODO: Do this only for dev env (BUT CURRENTLY ENABLED FOR ALL)
+            res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate"); // HTTP 1.1.
+            res.setHeader("Pragma", "no-cache"); // HTTP 1.0.
+            res.setHeader("Expires", "0"); // Proxies.
 
-                const shouldRenderOnServer = matchingPath?.ssr === true
+            const shouldRenderOnServer = matchingPath?.ssr === true
 
-                const htmlFilePath = path.join(__dirname, '../client.html');
-                const htmlContent = fs.readFileSync(htmlFilePath, 'utf-8');
-                const htmlContentNode = HTMLParser.parse(htmlContent);
+            const htmlFilePath = path.join(__dirname, '../client.html');
+            const htmlContent = fs.readFileSync(htmlFilePath, 'utf-8');
+            const htmlContentNode = HTMLParser.parse(htmlContent);
 
-                const passThruContext = extractFrontendContext(req.requestContext);
-                const controller = new FrontendController();
+            const passThruContext = extractFrontendContext(req.requestContext);
+            const controller = new FrontendController();
 
-                controller.applets = controllerRef.applets;
-                controller.arkConfig = controllerRef.arkConfig;
-                controller.registeredComponents = controllerRef.registeredComponents;
+            controller.applets = controllerRef.applets;
+            controller.arkConfig = controllerRef.arkConfig;
+            controller.registeredComponents = controllerRef.registeredComponents;
 
-                controller.context = passThruContext as any;
+            controller.context = passThruContext as any;
 
-                if (shouldRenderOnServer === true) {
-                    let helmetContext: any = {};
-                    const serverRenderedContent = ReactDOMServer.renderToString(<App helmetContext={helmetContext} initialPath={req.path} controller={controller} />);
-                    let headContent: string[] = [];
-                    try {
-                        headContent = Object.keys(helmetContext?.helmet || {}).reduce(
-                            (acc: any[], item) => {
-                                let c: string;
-                                try {
-                                    c = helmetContext.helmet[item].toString();
-                                } catch (e) {
-                                    console.error(e);
-                                }
-    
-                                // @ts-ignore
-                                if (c) {
-                                    acc.push(c);
-                                }
-    
-                                return acc;
-                            },
-                            []
-                        );
-    
-                        let i = 0;
-                        for (i = 0; i < headContent.length; i++) {
-                            const headNode = htmlContentNode
-                                .querySelector('head');
-    
-                            if (headNode) {
-                                headNode.appendChild(HTMLParser.parse(headContent[i]));
+            if (shouldRenderOnServer === true) {
+                let helmetContext: any = {};
+                const serverRenderedContent = ReactDOMServer.renderToString(<App helmetContext={helmetContext} initialPath={req.path} controller={controller} />);
+                let headContent: string[] = [];
+                try {
+                    headContent = Object.keys(helmetContext?.helmet || {}).reduce(
+                        (acc: any[], item) => {
+                            let c: string;
+                            try {
+                                c = helmetContext.helmet[item].toString();
+                            } catch (e) {
+                                console.error(e);
                             }
-                        }
-                    } catch (e) {
-                        console.error(e);
-                    }
 
+                            // @ts-ignore
+                            if (c) {
+                                acc.push(c);
+                            }
 
-                    const rootDiv = htmlContentNode.querySelector('#root');
-                    if (rootDiv) {
-                        rootDiv.set_content(serverRenderedContent);
-                    }
-                }
-
-                const headCon = htmlContentNode.querySelector('head');
-                if (headCon) {
-                    const scriptNode = HTMLParser.parse(
-                        `<script>globalThis.___ark_hydrated_state___=${JSON.stringify({...passThruContext, shouldHydrate: shouldRenderOnServer})};</script>`
+                            return acc;
+                        },
+                        []
                     );
-                    headCon.appendChild(scriptNode);
+
+                    let i = 0;
+                    for (i = 0; i < headContent.length; i++) {
+                        const headNode = htmlContentNode
+                            .querySelector('head');
+
+                        if (headNode) {
+                            headNode.appendChild(HTMLParser.parse(headContent[i]));
+                        }
+                    }
+                } catch (e) {
+                    console.error(e);
                 }
 
-                res.send(htmlContentNode.toString());
-                return;
+
+                const rootDiv = htmlContentNode.querySelector('#root');
+                if (rootDiv) {
+                    rootDiv.set_content(serverRenderedContent);
+                }
             }
+
+            const headCon = htmlContentNode.querySelector('head');
+            if (headCon) {
+                const scriptNode = HTMLParser.parse(
+                    `<script>globalThis.___ark_hydrated_state___=${JSON.stringify({ ...passThruContext, shouldHydrate: shouldRenderOnServer })};</script>`
+                );
+                headCon.appendChild(scriptNode);
+            }
+
+            res.send(htmlContentNode.toString());
+            return;
         }
+
         next();
     })
 
