@@ -564,7 +564,7 @@ export function Protected(props: any) {
     if (current.isAuthenticated === false) {
         return (
             <div style={{ height: '100vh', width: '100vw', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                <h1 className='text-5xl'>401 Unauthorized</h1>
+                <h1 className='text-5xl'>401 Unauthorized. You need to be signed in to access this page.</h1>
             </div>
         )
     }
