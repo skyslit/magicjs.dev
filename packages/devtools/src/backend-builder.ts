@@ -2,7 +2,6 @@ import { Configuration } from 'webpack';
 import nodeExternals from 'webpack-node-externals';
 import { BuilderBase, ConfigurationOptions } from './builder-base';
 import path from 'path';
-import WatchExternalFilesPlugin from 'webpack-watch-files-plugin';
 import VirtualModulesPlugin from 'webpack-virtual-modules';
 import { generateAutoloaderFile } from './utils/generate-auto-loader-file';
 
@@ -114,13 +113,6 @@ export class BackendBuilder extends BuilderBase {
         errorStack: false,
       },
       plugins: [
-        new WatchExternalFilesPlugin({
-          files: [
-            '**/config.json',
-            './src/ark.json',
-            '.env'
-          ]
-        }),
         this.virtualModules
       ],
       module: {

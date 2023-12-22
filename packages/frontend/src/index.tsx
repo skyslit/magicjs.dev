@@ -334,16 +334,20 @@ function PageRenderer(props: any) {
         );
     }
 
+    const Component = React.useMemo(() => {
+        return component.Component;
+    }, [component.Component]);
+
     if (isInitialRender === false) {
         return (
             <React.Suspense fallback={<div>Lazy Loading</div>}>
-                <component.Component {...props} />
+                <Component {...props} />
             </React.Suspense>
         )
     }
 
     return (
-        <component.Component {...props} />
+        <Component {...props} />
     )
 }
 

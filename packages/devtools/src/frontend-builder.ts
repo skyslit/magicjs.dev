@@ -1,4 +1,4 @@
-import { Configuration } from 'webpack';
+import { Configuration, HotModuleReplacementPlugin } from 'webpack';
 import { BuilderBase, ConfigurationOptions } from './builder-base';
 import path from 'path';
 import HTMLWebpackPlugin from 'html-webpack-plugin';
@@ -7,9 +7,9 @@ import MiniCssExtractPlugin from 'mini-css-extract-plugin';
 import TerserPlugin from 'terser-webpack-plugin';
 import Case from 'case';
 import fs from 'fs';
-import WatchExternalFilesPlugin from 'webpack-watch-files-plugin';
 import VirtualModulesPlugin from 'webpack-virtual-modules';
 import { generateAutoloaderFile } from './utils/generate-auto-loader-file';
+import ReactRefreshWebpackPlugin from '@pmmmwh/react-refresh-webpack-plugin';
 
 /**
  * SPA Builder
@@ -29,9 +29,6 @@ export class SPABuilder extends BuilderBase {
     this.appFilePath = appFilePath;
     this.virtualModules = new VirtualModulesPlugin({
       [path.join('src', `${this.appId}.tsx`)]: `
-        // @ts-nocheck
-        import React from 'react';
-        import ReactDOM from 'react-dom';
         import { startApp } from '@skyslit/ark-frontend';
         import { initializeModules } from './auto-loader.tsx';
 
@@ -106,7 +103,8 @@ export class SPABuilder extends BuilderBase {
       plugins: [
         require.resolve('@babel/plugin-proposal-class-properties'),
         require.resolve('@babel/plugin-syntax-dynamic-import'),
-      ],
+        mode === 'development' && require.resolve('react-refresh/babel')
+      ].filter(Boolean),
     };
 
     return {
@@ -129,7 +127,10 @@ export class SPABuilder extends BuilderBase {
         symlinks: true,
       },
       entry: {
-        [this.appId]: path.join(cwd, 'src', `client.tsx`),
+        [this.appId]: [
+          require.resolve('webpack-hot-middleware/client'),
+          path.join(cwd, 'src', `client.tsx`)
+        ],
       },
       output: {
         publicPath: '/',
@@ -147,15 +148,13 @@ export class SPABuilder extends BuilderBase {
           filename: './assets/[name].css',
           chunkFilename: './assets/[name].[contenthash:8].chunk.css',
         }),
-        new WatchExternalFilesPlugin({
-          files: [
-            '**/config.json',
-            './src/ark.json',
-            '.env'
-          ]
-        }),
-        this.virtualModules
-      ],
+        this.virtualModules,
+        mode === 'development' && new HotModuleReplacementPlugin(),
+        new ReactRefreshWebpackPlugin({
+          overlay: false,
+          forceEnable: true
+        })
+      ].filter(Boolean),
       stats: {
         loggingTrace: false,
         errorStack: false,
