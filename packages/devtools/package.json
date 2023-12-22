@@ -1,6 +1,6 @@
 {
   "name": "@skyslit/ark-devtools",
-  "version": "3.0.29",
+  "version": "3.0.32",
   "main": "build/index.js",
   "scripts": {
     "build": "tsc",
