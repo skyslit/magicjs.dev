@@ -17,6 +17,7 @@
     "@skyslit/ark-devtools": "^3.0.32",
     "@types/follow-redirects": "^1.14.4",
     "axios": "^1.6.2",
+    "chalk": "^4.1.2",
     "command-line-args": "^5.2.1",
     "follow-redirects": "^1.15.3",
     "form-data": "^4.0.0",

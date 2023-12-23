@@ -7,6 +7,9 @@ import hotMiddleware from 'webpack-hot-middleware';
 import { spawn, ChildProcess } from 'child_process';
 import fs from 'fs';
 import httpProxy from 'http-proxy';
+import chalk from 'chalk';
+import getPort from 'get-port';
+import open from 'open';
 
 type Options = {
     cwd: string
@@ -15,20 +18,93 @@ type Options = {
 const proxy = httpProxy.createProxyServer();
 
 proxy.on('error', (err, req, res: any) => {
-  console.error(err);
+    console.log('Could not connect to server process');
 });
 
-export function createDevServer(opts: Options) {
-    console.log('Starting dev server');
-
+export async function createDevServer(opts: Options) {
     const app = express();
     let appProcess: ChildProcess;
 
-    let appRunning: boolean = false;
     let appRunningTimer = null;
 
+    let status = {
+        appServerPort: await getPort(),
+        appServerLive: false,
+        devServerPort: 3000,
+        devServerActive: false,
+        frontendCompiled: false,
+        backendCompiled: false,
+        compilationStatus: 'building',
+        frontendWarnings: [],
+        backendWarnings: [],
+        frontendErrors: [],
+        backendErrors: [],
+        hasWarnings: false,
+        hasErrors: false
+    }
+
+    const refreshCompilationStatus = () => {
+        status.hasErrors = status.backendErrors.length > 0 || status.frontendErrors.length > 0;
+        status.hasWarnings = status.backendWarnings.length > 0 || status.frontendWarnings.length > 0;
+
+        if (status.backendCompiled === true && status.frontendCompiled === true) {
+            if (status.hasErrors === true) {
+                status.compilationStatus = 'error';
+            } else if (status.hasWarnings === true) {
+                status.compilationStatus = 'compiled-with-warnings';
+            } else {
+                status.compilationStatus = 'ready';
+            }
+        } else {
+            status.compilationStatus = 'building';
+        }
+
+        printLog();
+    }
+
+    const printLog = () => {
+        console.clear();
+
+        // Show compilation status
+        switch (status.compilationStatus) {
+            case 'ready': {
+                console.log(chalk.green('Compiled successfully!'));
+                break;
+            }
+            case 'error': {
+                console.log(chalk.red('Compilation failed'));
+                break;
+            }
+            case 'compiled-with-warnings': {
+                console.log(chalk.yellow('Compiled with warnings'));
+                break;
+            }
+            default: {
+                console.log(chalk.blue('Building changes...'));
+                break;
+            }
+        }
+
+        if (status.compilationStatus === 'ready' || status.compilationStatus === 'compiled-with-warnings') {
+            console.log('');
+            if (status.devServerActive === true) {
+                console.log('You can now view project in the browser');
+                console.log('');
+                console.log(`    Local:       http://localhost:${status.devServerPort}`);
+                console.log('');
+            }
+        } else {
+            if (status.devServerActive === false) {
+                console.log('');
+                console.log(chalk.yellow(`Starting development server...`));
+            }
+        }
+    }
+
+    printLog();
+
     const runApp = () => {
-        appRunning = false;
+        status.appServerLive = false;
         clearTimeout(appRunningTimer);
         if (appProcess) {
             appProcess.kill('SIGKILL');
@@ -42,16 +118,48 @@ export function createDevServer(opts: Options) {
         }
 
         appProcess = spawn('node', [appPath], {
-            stdio: 'inherit',
+            // stdio: 'inherit',
+            env: {
+                ...process.env,
+                DEV_PORT: String(status.appServerPort)
+            }
+        });
+
+        const processLog = (msg: string) => {
+            if (status.appServerLive === false) {
+                status.appServerLive = msg.startsWith('Listening on port');
+            }
+
+            console.log(msg);
+        }
+
+        appProcess.stdout.on('data', (data) => {
+            let d = String(data);
+            processLog(d.substring(0, d.length - 1));
+        });
+
+        appProcess.stderr.on('data', (data) => {
+            let d = String(data);
+            processLog(d.substring(0, d.length - 1));
         });
 
         appRunningTimer = setTimeout(() => {
-            appRunning = true;
+            status.appServerLive = true;
         }, 3000);
     };
 
     const backendBuilder = new BackendBuilder(path.join(opts.cwd, 'src/server.tsx'));
     const frontendBuilder = new SPABuilder('client', path.join(opts.cwd, 'src/client.tsx'));
+
+    backendBuilder.on('compiling', () => {
+        status.backendCompiled = false;
+        refreshCompilationStatus();
+    });
+
+    frontendBuilder.on('compiling', () => {
+        status.frontendCompiled = false;
+        refreshCompilationStatus();
+    });
 
     backendBuilder.build({
         cwd: opts.cwd,
@@ -70,15 +178,13 @@ export function createDevServer(opts: Options) {
             if (err) throw err;
 
             if (result) {
-                if (result.compilation.errors.length > 0) {
-                    console.error(result.compilation.errors);
-                }
-                if (result.compilation.warnings.length > 0) {
-                    console.warn(result.compilation.warnings);
-                }
+                status.backendErrors = result.compilation.errors;
+                status.backendWarnings = result.compilation.warnings;
             }
 
-            console.log('Backend output ready');
+            status.backendCompiled = true;
+            refreshCompilationStatus();
+
             runApp();
         } catch (e) {
             console.error(e);
@@ -90,15 +196,13 @@ export function createDevServer(opts: Options) {
             if (err) throw err;
 
             if (result) {
-                if (result.compilation.errors.length > 0) {
-                    console.error(result.compilation.errors);
-                }
-                if (result.compilation.warnings.length > 0) {
-                    console.warn(result.compilation.warnings);
-                }
+                status.frontendErrors = result.compilation.errors;
+                status.frontendWarnings = result.compilation.warnings;
             }
 
-            console.log('Frontend output ready');
+            status.frontendCompiled = true;
+            refreshCompilationStatus();
+
             runApp();
         } catch (e) {
             console.error(e);
@@ -108,11 +212,11 @@ export function createDevServer(opts: Options) {
     app.use(devMiddleware(backendBuilder.compiler, { stats: 'none', outputFileSystem: require('fs') }));
     app.use(devMiddleware(frontendBuilder.compiler, { stats: 'none', outputFileSystem: require('fs') }));
 
-    app.use(hotMiddleware(frontendBuilder.compiler, {}));
+    app.use(hotMiddleware(frontendBuilder.compiler, { log: false }));
 
     app.all('/*', async (req, res) => {
         try {
-            while (appRunning === false) {
+            while (status.appServerLive === false) {
                 await new Promise<void>((r) => setTimeout(() => r(), 300));
             }
             
@@ -121,16 +225,18 @@ export function createDevServer(opts: Options) {
             res.setHeader("Expires", "0"); // Proxies.
       
             proxy.web(req, res, {
-              target: 'http://localhost:3000',
-              ws: true,
-              timeout: 30
+              target: `http://localhost:${status.appServerPort}`,
+              ws: true
             });
           } catch (e) {
             res.status(500).json({ message: e?.message });
           }
     })
 
-    app.listen(3001, undefined, undefined, () => {
-        console.log('Dev server listing on port 3001');
+    app.listen(status.devServerPort, undefined, undefined, () => {
+        status.devServerActive = true;
+        printLog();
+
+        open(`http://localhost:${status.devServerPort}`);
     })
 }

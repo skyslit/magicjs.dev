@@ -288,8 +288,13 @@ export async function createServer(handler?: (instance: ServerInstance) => void 
         next();
     })
 
-    instance.app.listen(instance.port, undefined as any, undefined as any, () => {
-        console.log(`Listing to ${instance?.port}`)
+    let DEV_PORT: any = Number(process.env.DEV_PORT);
+    if (isNaN(DEV_PORT)) {
+        DEV_PORT = instance.port;
+    }
+
+    instance.app.listen(DEV_PORT, undefined as any, undefined as any, () => {
+        console.log(`Listening on port ${DEV_PORT}`)
     });
 
     return instance;

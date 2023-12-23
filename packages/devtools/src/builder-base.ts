@@ -98,7 +98,6 @@ export class BuilderBase extends EventEmitter {
         }
 
         this.compiler.hooks.invalid.tap('invalid', () => {
-            console.log('Compiling...');
             this.emit('compiling');
         });
 
