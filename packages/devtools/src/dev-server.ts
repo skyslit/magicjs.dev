@@ -10,9 +10,12 @@ import httpProxy from 'http-proxy';
 import chalk from 'chalk';
 import getPort from 'get-port';
 import open from 'open';
+import axios from 'axios';
+import safeJson from 'json-stringify-safe';
 
 type Options = {
-    cwd: string
+    cwd: string,
+    runtimeUrl?: string
 }
 
 const proxy = httpProxy.createProxyServer();
@@ -22,6 +25,9 @@ proxy.on('error', (err, req, res: any) => {
 });
 
 export async function createDevServer(opts: Options) {
+    const { runtimeUrl } = opts;
+
+    const HasRuntimeAgent = Boolean(runtimeUrl);
     const app = express();
     let appProcess: ChildProcess;
 
@@ -43,6 +49,23 @@ export async function createDevServer(opts: Options) {
         hasErrors: false
     }
 
+    const reportToRuntime = (payload: any) => {
+        if (HasRuntimeAgent === true) {
+            axios({
+                method: 'post',
+                baseURL: runtimeUrl,
+                url: '/__ark__agent_c/report_from_compiler',
+                data: safeJson(payload),
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .catch((e) => {
+                console.log(chalk.red(`Could not communicate with agent ${runtimeUrl}`));
+            })
+        }
+    }
+
     const refreshCompilationStatus = () => {
         status.hasErrors = status.backendErrors.length > 0 || status.frontendErrors.length > 0;
         status.hasWarnings = status.backendWarnings.length > 0 || status.frontendWarnings.length > 0;
@@ -60,6 +83,7 @@ export async function createDevServer(opts: Options) {
         }
 
         printLog();
+        reportToRuntime(status);
     }
 
     const printLog = () => {
@@ -214,6 +238,14 @@ export async function createDevServer(opts: Options) {
 
     app.use(hotMiddleware(frontendBuilder.compiler, { log: false }));
 
+    app.get('/____compiler__status', (req, res) => {
+        res.json(
+            JSON.parse(
+                safeJson(status)
+            )
+        );
+    })
+
     app.all('/*', async (req, res) => {
         try {
             while (status.appServerLive === false) {
@@ -237,6 +269,8 @@ export async function createDevServer(opts: Options) {
         status.devServerActive = true;
         printLog();
 
-        open(`http://localhost:${status.devServerPort}`);
+        if (HasRuntimeAgent === false) {
+            open(`http://localhost:${status.devServerPort}`);
+        }
     })
 }

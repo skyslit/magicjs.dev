@@ -13,6 +13,7 @@ process.on('SIGINT', function () {
 
 const optionDefinitions = [
     { name: 'start', alias: 's', type: Boolean },
+    { name: 'runtimeUrl', type: String },
     { name: 'build', alias: 'b', type: Boolean },
     { name: 'init', alias: 'i', type: Boolean },
     { name: 'publish', alias: 'p', type: Boolean },
@@ -26,7 +27,8 @@ const optionDefinitions = [
 const options = commandLineArgs(optionDefinitions);
 
 if (options.start === true) {
-    buildApp(true);
+    const runtimeUrl = options.runtimeUrl;
+    buildApp(true, runtimeUrl);
 } else if (options.build === true) {
     buildApp(false);
 } else if (options.init === true) {
