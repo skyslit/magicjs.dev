@@ -23,7 +23,7 @@ export class BackendBuilder extends BuilderBase {
         // @ts-nocheck
         import React from 'react';
         import ReactDOM from 'react-dom';
-        import { startApp } from '@skyslit/ark-frontend';
+        import { startApp } from '@magicjs.dev/frontend';
         import { initializeModules } from './auto-loader.tsx';
         import runApp from './app.tsx';
 
@@ -101,8 +101,8 @@ export class BackendBuilder extends BuilderBase {
       externals: [
         nodeExternals({
           allowlist: [
-            '@skyslit/ark-backend',
-            '@skyslit/ark-frontend',
+            '@magicjs.dev/backend',
+            '@magicjs.dev/frontend',
             // Allow the stylesheet to be handled by ignore-loader
             this.getStyleTestExp(),
           ],

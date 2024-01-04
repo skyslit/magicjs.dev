@@ -29,7 +29,7 @@ export class SPABuilder extends BuilderBase {
     this.appFilePath = appFilePath;
     this.virtualModules = new VirtualModulesPlugin({
       [path.join('src', `${this.appId}.tsx`)]: `
-        import { startApp } from '@skyslit/ark-frontend';
+        import { startApp } from '@magicjs.dev/frontend';
         import { initializeModules } from './auto-loader.tsx';
 
         initializeModules();
@@ -50,7 +50,7 @@ export class SPABuilder extends BuilderBase {
     let importExpressions: string = '';
     let registrationExpressions: string = '';
 
-    const arkJSONPath = path.join(opts.cwd, 'src', 'ark.json');
+    const arkJSONPath = path.join(opts.cwd, 'src', 'app.json');
     const arkJSON: any = JSON.parse(fs.readFileSync(arkJSONPath, 'utf-8'));
     if (Array.isArray(arkJSON.routes)) {
       const importables = arkJSON.routes.map((route) => {

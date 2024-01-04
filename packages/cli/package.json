@@ -1,10 +1,10 @@
 {
-  "name": "@skyslit/ark",
+  "name": "@magicjs.dev/cli",
   "version": "3.0.34",
   "description": "",
   "main": "build/index.js",
   "bin": {
-    "ark": "build/index.js"
+    "magicjs": "build/index.js"
   },
   "scripts": {
     "build": "tsc",
@@ -14,7 +14,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@skyslit/ark-devtools": "^3.0.34",
+    "@magicjs.dev/devtools": "^3.0.34",
     "@types/follow-redirects": "^1.14.4",
     "axios": "^1.6.2",
     "chalk": "^4.1.2",

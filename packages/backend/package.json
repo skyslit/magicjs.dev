@@ -1,5 +1,5 @@
 {
-  "name": "@skyslit/ark-backend",
+  "name": "@magicjs.dev/backend",
   "version": "3.0.33",
   "description": "",
   "main": "build/index.js",
@@ -24,7 +24,7 @@
     "typescript": "5.3.2"
   },
   "devDependencies": {
-    "@skyslit/ark-frontend": "^3.0.32",
+    "@magicjs.dev/frontend": "^3.0.32",
     "@types/bcryptjs": "^2.4.6",
     "@types/cookie-parser": "^1.4.6",
     "@types/express": "^4.17.21",

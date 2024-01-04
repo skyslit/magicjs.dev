@@ -9,7 +9,7 @@ import ReactDOMServer from 'react-dom/server';
 import fs from 'fs';
 import path from 'path';
 import HTMLParser from 'node-html-parser';
-import { App, FrontendController, controllerRef } from '@skyslit/ark-frontend';
+import { App, FrontendController, controllerRef } from '@magicjs.dev/frontend';
 import { MongoClient, Collection } from 'mongodb';
 import jwt from 'jsonwebtoken';
 import moment from 'moment';

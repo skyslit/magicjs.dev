@@ -1,4 +1,4 @@
-import { createDevServer } from '@skyslit/ark-devtools/build/dev-server';
+import { createDevServer } from '@magicjs.dev/devtools/build/dev-server';
 import chalk from 'chalk';
 
 export function buildApp(watch: boolean = false, runtimeUrl?: string) {

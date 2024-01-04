@@ -26,7 +26,7 @@ export function generateAutoloaderFile(cwd: string, target: 'frontend' | 'backen
     let importExpressions: string = '';
     let registrationExpressions: string = '';
 
-    const arkJSONPath = path.join(cwd, 'src', 'ark.json');
+    const arkJSONPath = path.join(cwd, 'src', 'app.json');
     const arkJSON: any = JSON.parse(fs.readFileSync(arkJSONPath, 'utf-8'));
     if (Array.isArray(arkJSON.routes)) {
         const importables = arkJSON.routes.map((route) => {
@@ -153,7 +153,7 @@ export function generateAutoloaderFile(cwd: string, target: 'frontend' | 'backen
     let backendregistrationExpressions: string = '';
 
     if (target === 'backend') {
-        arkBackendImportSt = `import { registerBackendComponent } from '@skyslit/ark-backend'`;
+        arkBackendImportSt = `import { registerBackendComponent } from '@magicjs.dev/backend'`;
         // Load all backend modules
         const entries = glob.sync(['src/**/**.server.tsx'], { dot: false, cwd });
 
@@ -171,9 +171,9 @@ export function generateAutoloaderFile(cwd: string, target: 'frontend' | 'backen
 
     const content = `
       import React, { lazy } from 'react';
-      import { registerView, registerApplet, controllerRef, attachRouteMeta, attachAppletMeta } from '@skyslit/ark-frontend';
+      import { registerView, registerApplet, controllerRef, attachRouteMeta, attachAppletMeta } from '@magicjs.dev/frontend';
       import './root.scss';
-      import arkConfig from './ark.json';
+      import arkConfig from './app.json';
       ${arkBackendImportSt}
 
       ${backendImportExpressions}
