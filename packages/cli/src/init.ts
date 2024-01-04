@@ -127,7 +127,7 @@ export async function init() {
     console.log('Installing files...');
     let extractPath = fs
         .readdirSync(cwd)
-        .find((d) => d.indexOf('skyslit-ark-base') > -1);
+        .find((d) => d.indexOf('magicjs.dev-base') > -1);
     if (extractPath) {
         extractPath = path.join(cwd, extractPath);
 
