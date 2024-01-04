@@ -1,6 +1,6 @@
 {
   "name": "@magicjs.dev/cli",
-  "version": "3.0.38",
+  "version": "3.0.39",
   "description": "",
   "main": "build/index.js",
   "bin": {
@@ -14,7 +14,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@magicjs.dev/devtools": "^3.0.37",
+    "@magicjs.dev/devtools": "^3.0.39",
     "@types/follow-redirects": "^1.14.4",
     "axios": "^1.6.2",
     "chalk": "^4.1.2",
