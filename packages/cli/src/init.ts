@@ -76,8 +76,10 @@ export default function runCommand(
   }
 
   
-export async function init() {
-    const cwd = process.cwd();
+export async function init(cwd?: string) {
+    if (!cwd) {
+      cwd = process.cwd();
+    }
     const tarFilePath = path.join(cwd, 'archive.tar.gz')
 
     console.log('Cloning files...');
