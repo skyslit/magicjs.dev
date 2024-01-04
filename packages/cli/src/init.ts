@@ -86,7 +86,7 @@ export async function init() {
 
         const request = https.get({
             hostname: 'api.github.com',
-            path: '/repos/skyslit/ark-base-3/tarball',
+            path: '/repos/skyslit/magicjs.dev-base/tarball',
             headers: {
                 'user-agent': 'Mozilla/5.0'
             }
