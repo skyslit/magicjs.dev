@@ -3,7 +3,6 @@
   "version": "3.0.35",
   "description": "",
   "main": "build/index.js",
-  "private": "false",
   "bin": {
     "magicjs": "build/index.js"
   },
