@@ -3,6 +3,7 @@
   "version": "3.0.35",
   "description": "",
   "main": "build/index.js",
+  "private": "false",
   "bin": {
     "magicjs": "build/index.js"
   },
@@ -32,5 +33,6 @@
     "@types/fs-extra": "^11.0.4",
     "@types/gunzip-maybe": "^1.4.2",
     "@types/tar-fs": "^2.0.4"
-  }
+  },
+  "gitHead": "b3fbe26598368d576a22a81241b8c75c887c5a86"
 }

@@ -3,6 +3,7 @@
   "version": "3.0.35",
   "description": "",
   "main": "build/index.js",
+  "private": "false",
   "scripts": {
     "build": "tsc",
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -23,5 +24,6 @@
   "peerDependencies": {
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
-  }
+  },
+  "gitHead": "b3fbe26598368d576a22a81241b8c75c887c5a86"
 }
