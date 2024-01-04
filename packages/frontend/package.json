@@ -24,5 +24,8 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },
-  "gitHead": "31e71bfd5d5bba1313ad3b116b2c28ca866c9590"
+  "gitHead": "31e71bfd5d5bba1313ad3b116b2c28ca866c9590",
+  "publishConfig": {
+    "access": "public"
+  }
 }

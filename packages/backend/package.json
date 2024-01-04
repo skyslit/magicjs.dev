@@ -37,5 +37,8 @@
     "express": "4.18.2",
     "mongodb": "^6.3.0"
   },
-  "gitHead": "31e71bfd5d5bba1313ad3b116b2c28ca866c9590"
+  "gitHead": "31e71bfd5d5bba1313ad3b116b2c28ca866c9590",
+  "publishConfig": {
+    "access": "public"
+  }
 }

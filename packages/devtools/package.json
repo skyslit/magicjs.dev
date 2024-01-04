@@ -69,5 +69,8 @@
   },
   "types": "./build/index.d.ts",
   "description": "",
-  "gitHead": "31e71bfd5d5bba1313ad3b116b2c28ca866c9590"
+  "gitHead": "31e71bfd5d5bba1313ad3b116b2c28ca866c9590",
+  "publishConfig": {
+    "access": "public"
+  }
 }
