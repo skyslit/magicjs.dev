@@ -1,6 +1,6 @@
 {
   "name": "@magicjs.dev/devtools",
-  "version": "3.0.35",
+  "version": "3.0.36",
   "main": "build/index.js",
   "scripts": {
     "build": "tsc",
