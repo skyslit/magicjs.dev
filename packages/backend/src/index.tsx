@@ -15,6 +15,7 @@ import jwt from 'jsonwebtoken';
 import moment from 'moment';
 import utilsImp from './utils';
 import UrlPattern from 'url-pattern';
+import { Server, Socket } from 'socket.io';
 
 export const utils = utilsImp;
 
@@ -49,6 +50,7 @@ export class ServerInstance {
 
     database?: MongoClient;
     httpServer: http.Server;
+    io: Server;
     app: express.Express;
     port: number = 8081;
     functions: any = {};
@@ -175,6 +177,30 @@ export class ServerInstance {
             req.requestContext.setCurrentUser(null);
             res.json({ ack: true });
         });
+
+        /* -------------------------------------------------------------------------- */
+        /*                                   Socket                                   */
+        /* -------------------------------------------------------------------------- */
+
+        this.io = new Server(this.httpServer, {
+            path: '/app-socket'
+        });
+
+        this.io.on('connection', (socket) => {
+            console.log('A user connected', socket.id);
+
+            socket.on('/__magicjs/rooms/join', (roomIds) => {
+                console.log(`User joined ${roomIds.length} room(s)`);
+                socket.join(roomIds);
+            });
+
+            socket.on('/__magicjs/rooms/leave', async (roomIds: any[]) => {
+                for (const roomId of roomIds) {
+                    await socket.leave(roomId);
+                }
+                console.log(`Left ${roomIds.length} rooms`);
+            });
+        })
     }
 }
 
@@ -293,7 +319,7 @@ export async function createServer(handler?: (instance: ServerInstance) => void 
         DEV_PORT = instance.port;
     }
 
-    instance.app.listen(DEV_PORT, undefined as any, undefined as any, () => {
+    instance.httpServer.listen(DEV_PORT, undefined as any, undefined as any, () => {
         console.log(`Listening on port ${DEV_PORT}`)
     });
 
@@ -375,6 +401,10 @@ export function data(collectionName: string, dbName?: string): Collection {
     }
 
     return instance.database.db(dbName).collection(collectionName);
+}
+
+export function io(): Server {
+    return instance.io;
 }
 
 /* -------------------------------------------------------------------------- */

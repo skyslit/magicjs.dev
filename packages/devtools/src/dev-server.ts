@@ -101,6 +101,8 @@ export async function createDevServer(opts: Options) {
             }
             case 'compiled-with-warnings': {
                 console.log(chalk.yellow('Compiled with warnings'));
+                console.log(status.backendWarnings);
+                console.log(status.frontendWarnings);
                 break;
             }
             default: {
@@ -265,12 +267,18 @@ export async function createDevServer(opts: Options) {
           }
     })
 
-    app.listen(status.devServerPort, undefined, undefined, () => {
+    const server = app.listen(status.devServerPort, undefined, undefined, () => {
         status.devServerActive = true;
         printLog();
 
         if (HasRuntimeAgent === false) {
             open(`http://localhost:${status.devServerPort}`);
         }
+    })
+
+    server.on('upgrade', (req, socket, head) => {
+        proxy.ws(req, socket, head, {
+            target: `http://localhost:${status.appServerPort}`
+        });
     })
 }

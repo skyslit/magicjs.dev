@@ -5,6 +5,7 @@ import UrlPattern from 'url-pattern';
 import { BackendRemote } from './backend';
 import axios, { Axios } from 'axios';
 import _path from 'path';
+import { SocketApi, SocketController, createSocket } from './socket';
 
 const path = _path.posix;
 
@@ -61,6 +62,7 @@ export class FrontendController {
     map: any = {};
     applets: any[] = [];
     client: Axios = axios.create();
+    socketController: SocketController = new SocketController();
 
     subscribe(event: string, handler: any): () => void {
         let id = String(generator.next().value);
@@ -132,6 +134,8 @@ export const backend = BackendRemote.getInstance();
 export const controllerRef = FrontendController.getInstance();
 // @ts-ignore
 export const ControllerContext = React.createContext<FrontendController>(null);
+// @ts-ignore
+export const SocketContext = React.createContext<SocketApi>(null);
 
 /* -------------------------------------------------------------------------- */
 /*                                 Core Hooks                                 */
@@ -165,6 +169,10 @@ export function useAxios() {
 export function useController() {
     const controller = React.useContext(ControllerContext);
     return { controller }
+}
+
+export function useSocket() {
+    return React.useContext(SocketContext)
 }
 
 /* -------------------------------------------------------------------------- */
@@ -581,12 +589,15 @@ export function App(props: { initialPath?: any, helmetContext?: any, controller?
         return props.controller || FrontendController.getInstance()
     }, [props.controller]);
     const route = createRoute(props?.initialPath, controller);
+    const socket = createSocket({ controller });
 
     return (
         <HelmetProvider context={props?.helmetContext}>
             <RouteProvider.Provider value={route}>
                 <ControllerContext.Provider value={controller}>
-                    <PageRenderer />
+                    <SocketContext.Provider value={socket}>
+                        <PageRenderer />
+                    </SocketContext.Provider>
                 </ControllerContext.Provider>
             </RouteProvider.Provider>
         </HelmetProvider>
@@ -620,3 +631,8 @@ export function loadConfig(config: any) {
         }
     }
 }
+
+/* -------------------------------------------------------------------------- */
+/*                                   Socket                                   */
+/* -------------------------------------------------------------------------- */
+
