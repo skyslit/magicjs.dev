@@ -235,8 +235,11 @@ export async function createDevServer(opts: Options) {
         }
     });
 
-    app.use(devMiddleware(backendBuilder.compiler, { stats: 'none', outputFileSystem: require('fs') }));
-    app.use(devMiddleware(frontendBuilder.compiler, { stats: 'none', outputFileSystem: require('fs') }));
+    const backendMiddleware = devMiddleware(backendBuilder.compiler, { stats: 'none', outputFileSystem: require('fs') });
+    const frontendMiddleware = devMiddleware(frontendBuilder.compiler, { stats: 'none', outputFileSystem: require('fs') });
+    
+    app.use(backendMiddleware);
+    app.use(frontendMiddleware);
 
     app.use(hotMiddleware(frontendBuilder.compiler, { log: false }));
 
@@ -250,10 +253,52 @@ export async function createDevServer(opts: Options) {
 
     app.all('/*', async (req, res) => {
         try {
-            while (status.appServerLive === false) {
+            while (status.appServerLive === false && status.hasErrors === false) {
                 await new Promise<void>((r) => setTimeout(() => r(), 300));
             }
             
+            if (status.hasErrors === true) {
+                let backendOutput = null;
+                let frontendOutput = null;
+
+                backendOutput = [
+                    ...backendMiddleware.context.stats.toJson().errors,
+                    ...backendMiddleware.context.stats.toJson().warnings
+                ];
+
+                frontendOutput = [
+                    ...frontendMiddleware.context.stats.toJson().errors,
+                    ...frontendMiddleware.context.stats.toJson().warnings
+                ];
+
+                res.send(`
+                    <html>
+                    <head>
+                    </head>
+                    <body style="padding: 24px; background-color: white;">
+                        <div style="background-color: white;">
+                        <h1 style="margin: 0px; font-family: sans-serif; font-weight: normal;">There's some <span style="background-color: red; color: white; padding: 0 12px;">error</span> in the code</h1>
+                        <h2 style="margin-top: 8px; font-family: sans-serif; font-weight: normal;">Please use the terminal or below output to further troubleshoot it</h2>
+
+                        <button style="margin-top: 12px" onclick="reload()">Refresh</button>
+                        <code style="margin-top: 12px">
+                        ${safeJson(backendOutput)}
+                        </code>
+                        <code style="margin-top: 12px">
+                        ${safeJson(frontendOutput)}
+                        </code>
+                        </div>
+                        <script>
+                            function reload() {
+                                window.location.reload();
+                            }
+                        </script>
+                    </body>
+                    </html>
+                `)
+                return;
+            }
+
             res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate"); // HTTP 1.1.
             res.setHeader("Pragma", "no-cache"); // HTTP 1.0.
             res.setHeader("Expires", "0"); // Proxies.
