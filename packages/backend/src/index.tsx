@@ -1,7 +1,7 @@
 require('dotenv').config()
 
 import http from 'http';
-import express from 'express';
+import express, { Request, Response } from 'express';
 import cookieParser from 'cookie-parser';
 import morgan from 'morgan';
 import * as React from 'react';
@@ -16,6 +16,7 @@ import moment from 'moment';
 import utilsImp from './utils';
 import UrlPattern from 'url-pattern';
 import { Server, Socket } from 'socket.io';
+import { UploaderUtils, createUploaderUtils } from './uploader-utils';
 
 export const utils = utilsImp;
 
@@ -108,6 +109,20 @@ export class ServerInstance {
             isAuthenticated = Boolean(currentUser);
 
             req.requestContext = createRequestContext({
+                uploader: createUploaderUtils(req, res),
+                advanced: {
+                    req,
+                    res,
+                },
+                coreHandler: (handler) => {
+                    if (handler) {
+                        Promise.resolve(handler(req, res))
+                    }
+
+                    return {
+                        ___resMode: 'managed'
+                    }
+                },
                 token: req.cookies['authorization'],
                 isAuthenticated,
                 currentUser,
@@ -156,12 +171,52 @@ export class ServerInstance {
             next();
         })
 
-        this.app.post('/__backend/__managed/:functionPath(*)', async (req, res, next) => {
+        this.app.all('/__backend/__managed/:functionPath(*)', async (req, res, next) => {
+            if (['get', 'post'].indexOf(String(req.method).toLowerCase()) < 0) {
+                next();
+                return;
+            }
+
             const { functionPath } = req.params;
 
             try {
-                const result = await invokeBackendFunction(req.requestContext, functionPath, ...req.body.args);
-                return res.json(result);
+                const isMultipartFormData = String(req.headers['content-type']).startsWith('multipart/form-data');
+
+                let args: any = [];
+
+                if (typeof req.query['args'] === 'string') {
+                    try {
+                        args = JSON.parse(req.query['args']);
+                    } catch (e) {
+                        console.error(e);
+                    }
+                }
+
+                if (typeof req.headers['args'] === 'string') {
+                    try {
+                        args = JSON.parse(req.headers['args']);
+                    } catch (e) {
+                        console.error(e);
+                    }
+                }
+
+                if (Array.isArray(req?.body?.args)) {
+                    args = req?.body?.args;
+                }
+
+                if (isMultipartFormData === true) {
+                    await invokeBackendFunction(req.requestContext, functionPath, ...args);
+                } else {
+                    const result = await invokeBackendFunction(req.requestContext, functionPath, ...args);
+                    if (result?.___resMode === 'managed') {
+                        // Let the function handle the response
+                        if (result?.reader) {
+                            result.reader.pipe(res);
+                        }
+                        return;
+                    }
+                    return res.json(result);
+                }
             } catch (e: any) {
                 return res.status(500).json({
                     message: e?.message
@@ -357,7 +412,18 @@ export function createRoute(method: 'get' | 'post' | 'put' | 'delete', path: str
     }
 }
 
-type RequestContext = { setCurrentUser: (user: any) => void, currentUser: any, isAuthenticated: boolean, token: string };
+type RequestContext = {
+    setCurrentUser: (user: any) => void,
+    currentUser: any,
+    isAuthenticated: boolean,
+    token: string,
+    advanced: {
+        req: Request,
+        res: Response,
+    },
+    coreHandler: (handler: (req: Request, res: Response) => any) => any
+    uploader: UploaderUtils
+};
 export function createRequestContext(c: RequestContext) {
     return c;
 }

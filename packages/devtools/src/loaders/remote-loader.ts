@@ -13,9 +13,12 @@ export default function (source) {
         const backendModuleId = extractBackendModuleId(cwd, path.posix.relative(cwd, rPath));
         return `
         import { controllerRef } from '@magicjs.dev/frontend';
-        export default async function (...args: any[]) {
+
+        const fullPath = '/__backend/__managed/' + '${backendModuleId}';
+
+        async function invoke (...args: any[]) {
             try {
-                const res = await controllerRef.client.post('/__backend/__managed/' + '${backendModuleId}', {
+                const res = await controllerRef.client.post(fullPath, {
                     args
                 }, {
                     withCredentials: true
@@ -26,7 +29,12 @@ export default function (source) {
                 throw new Error((e?.response?.data?.message ? e?.response?.data?.message : e?.message) || 'Network error');
             }
             return "Calling api at ${backendModuleId}"
-        }`;
+        }
+
+        invoke.prototype.__fullPath = fullPath;
+        invoke.prototype.__backendModuleId = '${backendModuleId}';
+
+        export default invoke`;
     }
 
     return source;
