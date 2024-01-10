@@ -62,12 +62,13 @@ export function generateAutoloaderFile(cwd: string, target: 'frontend' | 'backen
                     config.applets = [];
                 }
 
-                const applets = glob.sync(['**/**.applet.tsx'], { dot: false, cwd: featurePath });
+                const applets = glob.sync(['**/**.tsx'], { dot: false, cwd: featurePath });
                 for (const appletFileName of applets) {
                     const relativePathToApplet = `${path.posix.relative(path.posix.join(cwd, 'src'), path.posix.join(featurePath, appletFileName))}`;
                     const genricPath = path.posix.join(path.posix.dirname(relativePathToApplet), path.posix.parse(path.posix.basename(relativePathToApplet)).name);
+                    const genricPathWithExt = path.posix.join(path.posix.dirname(relativePathToApplet), path.posix.basename(relativePathToApplet));
                     const defaultLabel = path.posix.relative('features', genricPath);
-                    const appletConfig = config.applets.find((a) => {
+                    const appletConfig = (config.aliases || config.applets || []).find((a) => {
                         return a.fileName === appletFileName
                     });
                     importables.push({
@@ -78,6 +79,7 @@ export function generateAutoloaderFile(cwd: string, target: 'frontend' | 'backen
                         fileId: Case.pascal(path.posix.join(feature, appletFileName)),
                         resolvers: [
                             genricPath,
+                            genricPathWithExt,
                             appletConfig?.alias || null
                         ].filter(Boolean),
                         mounts: (appletConfig?.mounts || []),

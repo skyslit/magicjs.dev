@@ -457,6 +457,10 @@ export function Link(props: { to?: string, children?: any, className?: string })
 /*                                   Portal                                   */
 /* -------------------------------------------------------------------------- */
 
+export function importUI(id: string) {
+    return (props: any) => <Applet {...props} id={id} />
+}
+
 export function Applet(props: { id: string } & any) {
     const { controller } = useController();
     const { id, ...rest } = props;
