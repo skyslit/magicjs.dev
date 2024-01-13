@@ -478,7 +478,9 @@ export function Applet(props: { id: string } & any) {
     }
 
     return (
-        <applet.Component {...rest} />
+        <React.Suspense fallback={<div></div>}>
+            <applet.Component {...rest} />
+        </React.Suspense>
     )
 }
 
