@@ -5,7 +5,7 @@ import { BackendBuilder } from './backend-builder';
 import devMiddleware from 'webpack-dev-middleware';
 import hotMiddleware from 'webpack-hot-middleware';
 import { spawn, ChildProcess } from 'child_process';
-import fs from 'fs';
+import fs from 'fs-extra';
 import httpProxy from 'http-proxy';
 import chalk from 'chalk';
 import getPort from 'get-port';
@@ -14,6 +14,7 @@ import axios from 'axios';
 import safeJson from 'json-stringify-safe';
 
 type Options = {
+    env?: 'development' | 'production',
     cwd: string,
     runtimeUrl?: string
 }
@@ -24,14 +25,17 @@ proxy.on('error', (err, req, res: any) => {
     console.log('Could not connect to server process');
 });
 
-export async function createDevServer(opts: Options) {
-    const { runtimeUrl } = opts;
+export async function runBuild(opts: Options) {
+    let { runtimeUrl, env } = opts;
+
+    if (env === undefined) {
+        env = 'development';
+    }
+
+    // Clean up build folder
+    fs.emptyDirSync(path.join(opts.cwd, 'build'));
 
     const HasRuntimeAgent = Boolean(runtimeUrl);
-    const app = express();
-    let appProcess: ChildProcess;
-
-    let appRunningTimer = null;
 
     let status = {
         appServerPort: await getPort(),
@@ -46,90 +50,18 @@ export async function createDevServer(opts: Options) {
         frontendErrors: [],
         backendErrors: [],
         hasWarnings: false,
-        hasErrors: false
+        hasErrors: false,
+        __frontendStatusInStr: '',
+        __backendStatusInStr: '',
     }
 
-    const reportToRuntime = (payload: any) => {
-        if (HasRuntimeAgent === true) {
-            axios({
-                method: 'post',
-                baseURL: runtimeUrl,
-                url: '/__ark__agent_c/report_from_compiler',
-                data: safeJson(payload),
-                headers: {
-                    'Content-Type': 'application/json',
-                }
-            })
-            .catch((e) => {
-                console.log(chalk.red(`Could not communicate with agent ${runtimeUrl}`));
-            })
-        }
-    }
-
-    const refreshCompilationStatus = () => {
-        status.hasErrors = status.backendErrors.length > 0 || status.frontendErrors.length > 0;
-        status.hasWarnings = status.backendWarnings.length > 0 || status.frontendWarnings.length > 0;
-
-        if (status.backendCompiled === true && status.frontendCompiled === true) {
-            if (status.hasErrors === true) {
-                status.compilationStatus = 'error';
-            } else if (status.hasWarnings === true) {
-                status.compilationStatus = 'compiled-with-warnings';
-            } else {
-                status.compilationStatus = 'ready';
-            }
-        } else {
-            status.compilationStatus = 'building';
-        }
-
-        printLog();
-        reportToRuntime(status);
-    }
-
-    const printLog = () => {
-        console.clear();
-
-        // Show compilation status
-        switch (status.compilationStatus) {
-            case 'ready': {
-                console.log(chalk.green('Compiled successfully!'));
-                break;
-            }
-            case 'error': {
-                console.log(chalk.red('Compilation failed'));
-                break;
-            }
-            case 'compiled-with-warnings': {
-                console.log(chalk.yellow('Compiled with warnings'));
-                console.log(status.backendWarnings);
-                console.log(status.frontendWarnings);
-                break;
-            }
-            default: {
-                console.log(chalk.blue('Building changes...'));
-                break;
-            }
-        }
-
-        if (status.compilationStatus === 'ready' || status.compilationStatus === 'compiled-with-warnings') {
-            console.log('');
-            if (status.devServerActive === true) {
-                console.log('You can now view project in the browser');
-                console.log('');
-                console.log(`    Local:       http://localhost:${status.devServerPort}`);
-                console.log('');
-            }
-        } else {
-            if (status.devServerActive === false) {
-                console.log('');
-                console.log(chalk.yellow(`Starting development server...`));
-            }
-        }
-    }
-
-    printLog();
-
+    let appProcess: ChildProcess;
+    let appRunningTimer = null;
     const runApp = () => {
+        if (env !== 'development') {
+            return;
+        }
+
         status.appServerLive = false;
         clearTimeout(appRunningTimer);
         if (appProcess) {
@@ -174,6 +106,88 @@ export async function createDevServer(opts: Options) {
         }, 3000);
     };
 
+    const refreshCompilationStatus = () => {
+        status.hasErrors = status.backendErrors.length > 0 || status.frontendErrors.length > 0;
+        status.hasWarnings = status.backendWarnings.length > 0 || status.frontendWarnings.length > 0;
+
+        if (status.backendCompiled === true && status.frontendCompiled === true) {
+            if (status.hasErrors === true) {
+                status.compilationStatus = 'error';
+            } else if (status.hasWarnings === true) {
+                status.compilationStatus = 'compiled-with-warnings';
+            } else {
+                status.compilationStatus = 'ready';
+            }
+        } else {
+            status.compilationStatus = 'building';
+        }
+
+        printLog();
+        reportToRuntime(status);
+    }
+
+    const reportToRuntime = (payload: any) => {
+        if (HasRuntimeAgent === true) {
+            axios({
+                method: 'post',
+                baseURL: runtimeUrl,
+                url: '/__ark__agent_c/report_from_compiler',
+                data: safeJson(payload),
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+                .catch((e) => {
+                    console.log(chalk.red(`Could not communicate with agent ${runtimeUrl}`));
+                })
+        }
+    }
+
+    const printLog = () => {
+        if (env !== 'development') {
+            return;
+        }
+        
+        console.clear();
+
+        // Show compilation status
+        switch (status.compilationStatus) {
+            case 'ready': {
+                console.log(chalk.green('Compiled successfully!'));
+                break;
+            }
+            case 'error': {
+                console.log(chalk.red('Compilation failed'));
+                break;
+            }
+            case 'compiled-with-warnings': {
+                console.log(chalk.yellow('Compiled with warnings'));
+                console.log(status.backendWarnings);
+                console.log(status.frontendWarnings);
+                break;
+            }
+            default: {
+                console.log(chalk.blue('Building changes...'));
+                break;
+            }
+        }
+
+        if (status.compilationStatus === 'ready' || status.compilationStatus === 'compiled-with-warnings') {
+            console.log('');
+            if (status.devServerActive === true) {
+                console.log('You can now view project in the browser');
+                console.log('');
+                console.log(`    Local:       http://localhost:${status.devServerPort}`);
+                console.log('');
+            }
+        } else {
+            if (status.devServerActive === false && env === 'development') {
+                console.log('');
+                console.log(chalk.yellow(`Starting development server...`));
+            }
+        }
+    }
+
     const backendBuilder = new BackendBuilder(path.join(opts.cwd, 'src/server.tsx'));
     const frontendBuilder = new SPABuilder('client', path.join(opts.cwd, 'src/client.tsx'));
 
@@ -187,21 +201,13 @@ export async function createDevServer(opts: Options) {
         refreshCompilationStatus();
     });
 
-    backendBuilder.build({
-        cwd: opts.cwd,
-        mode: 'development',
-        watchMode: true
-    });
-
-    frontendBuilder.build({
-        cwd: opts.cwd,
-        mode: 'development',
-        watchMode: true
-    });
-
     backendBuilder.attachMonitor((err, result) => {
         try {
             if (err) throw err;
+
+            if (env === 'production') {
+                status.__backendStatusInStr = result.toString();
+            }
 
             if (result) {
                 status.backendErrors = result.compilation.errors;
@@ -221,6 +227,10 @@ export async function createDevServer(opts: Options) {
         try {
             if (err) throw err;
 
+            if (env === 'production') {
+                status.__frontendStatusInStr = result.toString();
+            }
+
             if (result) {
                 status.frontendErrors = result.compilation.errors;
                 status.frontendWarnings = result.compilation.warnings;
@@ -235,43 +245,60 @@ export async function createDevServer(opts: Options) {
         }
     });
 
-    const backendMiddleware = devMiddleware(backendBuilder.compiler, { stats: 'none', outputFileSystem: require('fs') });
-    const frontendMiddleware = devMiddleware(frontendBuilder.compiler, { stats: 'none', outputFileSystem: require('fs') });
-    
-    app.use(backendMiddleware);
-    app.use(frontendMiddleware);
+    backendBuilder.build({
+        cwd: opts.cwd,
+        mode: env,
+        watchMode: env === 'development'
+    });
 
-    app.use(hotMiddleware(frontendBuilder.compiler, { log: false }));
+    frontendBuilder.build({
+        cwd: opts.cwd,
+        mode: env,
+        watchMode: env === 'development'
+    });
 
-    app.get('/____compiler__status', (req, res) => {
-        res.json(
-            JSON.parse(
-                safeJson(status)
-            )
-        );
-    })
+    if (env === 'development') {
+        const app = express();
 
-    app.all('/*', async (req, res) => {
-        try {
-            while (status.appServerLive === false && status.hasErrors === false) {
-                await new Promise<void>((r) => setTimeout(() => r(), 300));
-            }
-            
-            if (status.hasErrors === true) {
-                let backendOutput = null;
-                let frontendOutput = null;
+        printLog();
 
-                backendOutput = [
-                    ...backendMiddleware.context.stats.toJson().errors,
-                    ...backendMiddleware.context.stats.toJson().warnings
-                ];
+        const backendMiddleware = devMiddleware(backendBuilder.compiler, { stats: 'none', outputFileSystem: require('fs') });
+        const frontendMiddleware = devMiddleware(frontendBuilder.compiler, { stats: 'none', outputFileSystem: require('fs') });
 
-                frontendOutput = [
-                    ...frontendMiddleware.context.stats.toJson().errors,
-                    ...frontendMiddleware.context.stats.toJson().warnings
-                ];
+        app.use(backendMiddleware);
+        app.use(frontendMiddleware);
 
-                res.send(`
+        app.use(hotMiddleware(frontendBuilder.compiler, { log: false }));
+
+        app.get('/____compiler__status', (req, res) => {
+            res.json(
+                JSON.parse(
+                    safeJson(status)
+                )
+            );
+        })
+
+        app.all('/*', async (req, res) => {
+            try {
+                while (status.appServerLive === false && status.hasErrors === false) {
+                    await new Promise<void>((r) => setTimeout(() => r(), 300));
+                }
+
+                if (status.hasErrors === true) {
+                    let backendOutput = null;
+                    let frontendOutput = null;
+
+                    backendOutput = [
+                        ...backendMiddleware.context.stats.toJson().errors,
+                        ...backendMiddleware.context.stats.toJson().warnings
+                    ];
+
+                    frontendOutput = [
+                        ...frontendMiddleware.context.stats.toJson().errors,
+                        ...frontendMiddleware.context.stats.toJson().warnings
+                    ];
+
+                    res.send(`
                     <html>
                     <head>
                     </head>
@@ -296,34 +323,53 @@ export async function createDevServer(opts: Options) {
                     </body>
                     </html>
                 `)
-                return;
+                    return;
+                }
+
+                res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate"); // HTTP 1.1.
+                res.setHeader("Pragma", "no-cache"); // HTTP 1.0.
+                res.setHeader("Expires", "0"); // Proxies.
+
+                proxy.web(req, res, {
+                    target: `http://localhost:${status.appServerPort}`,
+                    ws: true
+                });
+            } catch (e) {
+                res.status(500).json({ message: e?.message });
             }
+        })
 
-            res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate"); // HTTP 1.1.
-            res.setHeader("Pragma", "no-cache"); // HTTP 1.0.
-            res.setHeader("Expires", "0"); // Proxies.
-      
-            proxy.web(req, res, {
-              target: `http://localhost:${status.appServerPort}`,
-              ws: true
+        const server = app.listen(status.devServerPort, undefined, undefined, () => {
+            status.devServerActive = true;
+            printLog();
+
+            if (HasRuntimeAgent === false) {
+                open(`http://localhost:${status.devServerPort}`);
+            }
+        })
+
+        server.on('upgrade', (req, socket, head) => {
+            proxy.ws(req, socket, head, {
+                target: `http://localhost:${status.appServerPort}`
             });
-          } catch (e) {
-            res.status(500).json({ message: e?.message });
-          }
-    })
+        })
+    } else {
+        let timer = setInterval(() => {
+            if (status.frontendCompiled === true && status.backendCompiled === true) {
+                if (status.hasErrors === true) {
+                    console.log(status.backendErrors);
+                    console.log(status.frontendErrors);
+                    
+                    console.error(chalk.red('Compiled with error'));
+                    process.exit(1);
+                } else {
+                    console.log(status.__backendStatusInStr);
+                    console.log(status.__frontendStatusInStr);
 
-    const server = app.listen(status.devServerPort, undefined, undefined, () => {
-        status.devServerActive = true;
-        printLog();
-
-        if (HasRuntimeAgent === false) {
-            open(`http://localhost:${status.devServerPort}`);
-        }
-    })
-
-    server.on('upgrade', (req, socket, head) => {
-        proxy.ws(req, socket, head, {
-            target: `http://localhost:${status.appServerPort}`
-        });
-    })
+                    console.error(chalk.green('Built successfully'));
+                }
+                clearInterval(timer);
+            }
+        }, 1000);
+    }
 }

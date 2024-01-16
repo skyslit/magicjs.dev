@@ -128,9 +128,9 @@ export class SPABuilder extends BuilderBase {
       },
       entry: {
         [this.appId]: [
-          require.resolve('webpack-hot-middleware/client'),
+          mode === 'development' && require.resolve('webpack-hot-middleware/client'),
           path.join(cwd, 'src', `client.tsx`)
-        ],
+        ].filter(Boolean),
       },
       output: {
         publicPath: '/',
@@ -150,7 +150,7 @@ export class SPABuilder extends BuilderBase {
         }),
         this.virtualModules,
         mode === 'development' && new HotModuleReplacementPlugin(),
-        new ReactRefreshWebpackPlugin({
+        mode === 'development' && new ReactRefreshWebpackPlugin({
           overlay: false,
           forceEnable: true
         })
