@@ -147,7 +147,7 @@ export async function runBuild(opts: Options) {
         if (env !== 'development') {
             return;
         }
-        
+
         console.clear();
 
         // Show compilation status
@@ -367,8 +367,8 @@ export async function runBuild(opts: Options) {
                     console.log(status.__frontendStatusInStr);
 
                     console.error(chalk.green('Built successfully'));
+                    process.exit(0);
                 }
-                clearInterval(timer);
             }
         }, 1000);
     }
