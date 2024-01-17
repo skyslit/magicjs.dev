@@ -29,8 +29,7 @@ export class MERNAI_Core {
             && Boolean(WS_CRED_PROJECT_ID)
         if (this._isEnabled === true) {
             this.client = axios.create({
-                // baseURL: 'https://compass-services.skyslit.com',
-                baseURL: 'http://localhost:6018',
+                baseURL: 'https://compass-services.skyslit.com',
                 headers: {
                     'tenantid': WS_CRED_SERVICE_TENANT_ID,
                     'clientid': WS_CRED_SERVICE_CLIENT_ID,
