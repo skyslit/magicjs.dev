@@ -2,6 +2,8 @@ import bcrypt from 'bcryptjs';
 import fs from 'fs-extra';
 import path from 'path';
 import { Readable } from 'stream';
+import { getService } from './services';
+import { IEmailVerificationServices } from './services/IEmailVerificationServices';
 
 /* -------------------------------------------------------------------------- */
 /*                                  Security                                  */
@@ -51,10 +53,18 @@ function removeFileFromUserUploads(dir: string, name: string) {
     return true;
 }
 
+function initiateEmailVerification(emailToVerify: string, otp: number) {
+    const emailVerificationService = getService<IEmailVerificationServices>('email-verify-services');
+    const isVerifyEmailInitiated = emailVerificationService.initiateVerification(emailToVerify, otp)
+
+    return isVerifyEmailInitiated;
+}
+
 export default {
     hash,
     verifyHash,
     saveFileToUserUploads,
     readFileFromUserUploads,
-    removeFileFromUserUploads
+    removeFileFromUserUploads,
+    initiateEmailVerification
 }
