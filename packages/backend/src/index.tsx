@@ -17,6 +17,7 @@ import utilsImp from './utils';
 import UrlPattern from 'url-pattern';
 import { Server, Socket } from 'socket.io';
 import { UploaderUtils, createUploaderUtils } from './uploader-utils';
+import { initaliseMERNAI_Services } from './services/mern.ai';
 
 export const utils = utilsImp;
 
@@ -72,6 +73,8 @@ export class ServerInstance {
     }
 
     constructor() {
+        initaliseMERNAI_Services();
+        
         this.app = express();
         this.httpServer = http.createServer(this.app);
 
