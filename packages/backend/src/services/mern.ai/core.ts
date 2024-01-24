@@ -15,18 +15,34 @@ export class MERNAI_Core {
         this._isEnabled = val;
     }
 
+    private _userUploadServiceEnabled: boolean = false;
+    get userUploadServiceEnabled() {
+        if (this._userUploadServiceEnabled === false) {
+            console.warn(`MERN.AI User Uploads service not enabled, hence upload functionalities won't work as expected.`);
+        }
+        return this._userUploadServiceEnabled;
+    }
+
+    set userUploadServiceEnabled(val: boolean) {
+        this._userUploadServiceEnabled = val;
+    }
+
     constructor() {
         const {
             WS_CRED_SERVICE_TENANT_ID,
             WS_CRED_SERVICE_CLIENT_ID,
             WS_CRED_SERVICE_CLIENT_SECRET,
-            WS_PROJECT_ID
+            WS_PROJECT_ID,
+            WS_NON_DEV_ENV_ID
         } = process.env || {};
 
         this.isEnabled = Boolean(WS_CRED_SERVICE_TENANT_ID)
             && Boolean(WS_CRED_SERVICE_CLIENT_ID)
             && Boolean(WS_CRED_SERVICE_CLIENT_SECRET)
-            && Boolean(WS_PROJECT_ID)
+            && Boolean(WS_PROJECT_ID);
+
+        this.userUploadServiceEnabled = this.isEnabled && Boolean(WS_NON_DEV_ENV_ID);
+
         if (this._isEnabled === true) {
             this.client = axios.create({
                 baseURL: 'https://compass-services.skyslit.com',
