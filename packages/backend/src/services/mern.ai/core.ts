@@ -33,7 +33,7 @@ export class MERNAI_Core {
             WS_CRED_SERVICE_CLIENT_ID,
             WS_CRED_SERVICE_CLIENT_SECRET,
             WS_PROJECT_ID,
-            WS_NON_DEV_ENV_ID
+            WS_ENVIRONMENT_ID
         } = process.env || {};
 
         this.isEnabled = Boolean(WS_CRED_SERVICE_TENANT_ID)
@@ -41,7 +41,7 @@ export class MERNAI_Core {
             && Boolean(WS_CRED_SERVICE_CLIENT_SECRET)
             && Boolean(WS_PROJECT_ID);
 
-        this.userUploadServiceEnabled = this.isEnabled && Boolean(WS_NON_DEV_ENV_ID);
+        this.userUploadServiceEnabled = this.isEnabled && Boolean(WS_ENVIRONMENT_ID);
 
         if (this._isEnabled === true) {
             this.client = axios.create({

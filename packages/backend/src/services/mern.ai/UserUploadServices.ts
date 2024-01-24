@@ -12,7 +12,7 @@ export class UserUploadServices extends MERNAI_Core implements IUserUploadServic
 
         this.client?.request({
             method: 'post',
-            url: `/blob/api/v2/buckets/${process.env['WS_NON_DEV_ENV_ID']}?path=${path.posix.join(dir, name)}`,
+            url: `/blob/api/v2/buckets/${process.env['WS_ENVIRONMENT_ID']}?path=${path.posix.join(dir, name)}`,
             data: file,
             headers: {
                 'Content-Type': 'application/octet-stream'
@@ -32,7 +32,7 @@ export class UserUploadServices extends MERNAI_Core implements IUserUploadServic
 
         await this.client?.request({
             method: 'delete',
-            url: `/blob/api/v2/buckets/${process.env['WS_NON_DEV_ENV_ID']}?path=${path.posix.join(dir, name)}`,
+            url: `/blob/api/v2/buckets/${process.env['WS_ENVIRONMENT_ID']}?path=${path.posix.join(dir, name)}`,
             responseType: 'stream'
         });
 
@@ -46,7 +46,7 @@ export class UserUploadServices extends MERNAI_Core implements IUserUploadServic
 
         const response = await this.client?.request({
             method: 'get',
-            url: `/blob/api/v2/buckets/${process.env['WS_NON_DEV_ENV_ID']}?path=${path.posix.join(dir, name)}`,
+            url: `/blob/api/v2/buckets/${process.env['WS_ENVIRONMENT_ID']}?path=${path.posix.join(dir, name)}`,
             responseType: 'stream'
         });
 
