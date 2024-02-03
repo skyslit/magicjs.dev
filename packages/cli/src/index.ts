@@ -4,6 +4,7 @@ import { init } from './init';
 import commandLineArgs from 'command-line-args';
 import { publish } from './publish';
 import { addFeature } from './add-feature';
+import packageJson from '../package.json';
 
 process.on('SIGINT', function () {
     console.log("\nGracefully shutting down from SIGINT (Ctrl-C)");
@@ -22,6 +23,7 @@ const optionDefinitions = [
     { name: 'add-feature', type: Boolean },
     { name: 'package', type: String },
     { name: 'name', type: String },
+    { name: 'version', alias: 'v', type: Boolean },
 ]
 
 const options = commandLineArgs(optionDefinitions);
@@ -59,6 +61,9 @@ if (options.start === true) {
     }
 
     addFeature(name, packageId)
+
+} else if (options['version'] === true) {
+    console.log(packageJson.version);
 } else {
     console.log('No supported command found');
 }
