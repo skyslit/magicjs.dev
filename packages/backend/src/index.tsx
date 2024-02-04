@@ -13,7 +13,7 @@ import { App, FrontendController, controllerRef } from '@magicjs.dev/frontend';
 import { MongoClient, Collection } from 'mongodb';
 import jwt from 'jsonwebtoken';
 import moment from 'moment';
-import utilsImp from './utils';
+import utilsImp, { RoleMapping } from './utils';
 import UrlPattern from 'url-pattern';
 import { Server, Socket } from 'socket.io';
 import { UploaderUtils, createUploaderUtils } from './uploader-utils';
@@ -31,12 +31,13 @@ declare global {
 }
 
 function extractFrontendContext(c: RequestContext) {
-    const { currentUser, isAuthenticated, token } = c;
+    const { currentUser, isAuthenticated, token, roles } = c;
 
     return {
         currentUser,
         isAuthenticated,
-        token
+        token,
+        roles
     }
 }
 
@@ -111,7 +112,14 @@ export class ServerInstance {
 
             isAuthenticated = Boolean(currentUser);
 
+            let roles: RoleMapping[] = [];
+
+            if (isAuthenticated === true) {
+                roles = await utils.findAllRolesByUser(currentUser?._id);
+            }
+
             req.requestContext = createRequestContext({
+                roles,
                 uploader: createUploaderUtils(req, res),
                 advanced: {
                     req,
@@ -129,6 +137,13 @@ export class ServerInstance {
                 token: req.cookies['authorization'],
                 isAuthenticated,
                 currentUser,
+                async isCurrentUserInAnyRoles(roles) {
+                    if (currentUser) {
+                        return utils.isUserInAnyRoles(currentUser?._id, roles);
+                    }
+
+                    return false;
+                },
                 setCurrentUser: (user) => {
                     if (user) {
                         /** Login */
@@ -419,6 +434,8 @@ type RequestContext = {
     setCurrentUser: (user: any) => void,
     currentUser: any,
     isAuthenticated: boolean,
+    roles: RoleMapping[],
+    isCurrentUserInAnyRoles: (roles: string | string[]) => Promise<boolean>
     token: string,
     advanced: {
         req: Request,

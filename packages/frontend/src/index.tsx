@@ -26,10 +26,16 @@ function* infinite() {
 
 export const generator = infinite();
 
+type RoleMapping = {
+    userId: string,
+    role: string
+}
+
 type Context = {
     token: string
     isAuthenticated: boolean,
-    currentUser: any
+    currentUser: any,
+    roles: RoleMapping[]
 }
 
 const getCookies = function () {
@@ -158,7 +164,19 @@ export function useLogin() {
         return await controller.client.post('/__backend/__context/logout');
     }, []);
 
-    return { current: context, logout }
+    const isCurrentUserInAnyRoles = React.useCallback((roles: string | string[]) => {
+        if (!Array.isArray(roles)) {
+            roles = [roles];
+        }
+
+        if (Array.isArray(context?.roles) && context?.roles.length > 0) {
+            return Boolean(context.roles.find((r) => roles.indexOf(r.role) > -1));
+        }
+
+        return false;
+    }, [context?.roles]);
+
+    return { current: context, logout, isCurrentUserInAnyRoles }
 }
 
 export function useAxios() {
