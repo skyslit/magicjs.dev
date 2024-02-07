@@ -451,12 +451,20 @@ export function LinkDisplay(props: LinkDisplayProps): JSX.Element {
     return (<></>)
 }
 
-export function Link(props: { to?: string, children?: any, className?: string }) {
-    const { to } = props;
+export function Link(props: { to?: string, target?: React.HTMLAttributeAnchorTarget, children?: any, className?: string }) {
+    const { to, target } = props;
     const { push } = useRoute();
 
     return (
-        <a className={props.className} href={to} onClick={(e) => {
+        <a className={props.className} target={target} href={to} onClick={(e) => {
+            if (e.ctrlKey || e.metaKey) {
+                return;
+            }
+
+            if (target) {
+                return;
+            }
+            
             e.preventDefault();
             if (to) {
                 push(to);
@@ -657,3 +665,5 @@ export function loadConfig(config: any) {
 }
 
 export { createUploader, createSrc } from './file-uploader';
+export { useContent } from './content';
+export { CMSLog } from './content-core';
