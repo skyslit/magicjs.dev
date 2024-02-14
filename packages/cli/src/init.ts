@@ -146,6 +146,10 @@ export async function init(cwd?: string) {
 
     console.log('Setting up git...');
     const git = gitP(cwd);
-    await git.init().then(() => git.add('./*')).then(() => git.commit('chore: initial commit'));
+    await git.init()
+    .then(() => git.addConfig('user.email', 'bot@skyslit.dev', false, 'local'))
+    .then(() => git.addConfig('user.name', 'developer', false, 'local'))
+    .then(() => git.add('./*'))
+    .then(() => git.commit('chore: initial commit'));
     console.log('Done ✅');
 }
