@@ -12,6 +12,7 @@ import getPort from 'get-port';
 import open from 'open';
 import axios from 'axios';
 import safeJson from 'json-stringify-safe';
+import os from 'os';
 
 type Options = {
     env?: 'development' | 'production',
@@ -65,7 +66,11 @@ export async function runBuild(opts: Options) {
         status.appServerLive = false;
         clearTimeout(appRunningTimer);
         if (appProcess) {
-            appProcess.kill('SIGKILL');
+            if (os.platform() === 'win32') {
+                appProcess.kill('SIGTERM');
+            } else {
+                appProcess.kill('SIGKILL');
+            }
         }
         const appPath: string = path.join(opts.cwd, 'build', 'server', 'main.js');
 
