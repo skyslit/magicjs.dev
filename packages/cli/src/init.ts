@@ -146,7 +146,7 @@ export async function init(cwd?: string) {
 
     console.log('Setting up git...');
     const git = gitP(cwd);
-    await git.init()
+    await git.init({ '--initial-branch': 'main' })
     .then(() => git.addConfig('user.email', 'bot@skyslit.dev', false, 'local'))
     .then(() => git.addConfig('user.name', 'developer', false, 'local'))
     .then(() => git.add('./*'))
