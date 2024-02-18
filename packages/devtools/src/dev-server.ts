@@ -56,6 +56,10 @@ export async function runBuild(opts: Options) {
         __backendStatusInStr: '',
     }
 
+    if (!isNaN(Number(process.env['PORT']))) {
+        status.devServerPort = Number(process.env['PORT']);
+    }
+
     let appProcess: ChildProcess;
     let appRunningTimer = null;
     const runApp = () => {
