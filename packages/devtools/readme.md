@@ -1,4 +1,4 @@
-# Introduction
+# Introduction to MagicJS
 
 MagicJS is an open-source full stack JavaScript / TypeScript framework for building web applications, SaaS products and business tools.
 
