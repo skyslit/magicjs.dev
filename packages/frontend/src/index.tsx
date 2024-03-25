@@ -6,6 +6,7 @@ import { BackendRemote } from './backend';
 import axios, { Axios } from 'axios';
 import _path from 'path';
 import { SocketApi, SocketController, createSocket } from './socket';
+import { ErrorBoundary } from "react-error-boundary";
 
 const path = _path.posix;
 
@@ -227,6 +228,7 @@ type RouteApi = {
     component?: any
     push: (path: string) => void
     isInitialRender: boolean
+    getQuery: () => any
 }
 
 // @ts-ignore
@@ -272,7 +274,8 @@ function createRoute(defaultRoot: string, controller: FrontendController): Route
     const push = React.useCallback((path: string) => {
         window.history.pushState({}, '', path);
         setIsInitialRender(false);
-        setPathname(path);
+        const url = new URL(path, `http://localhost`)
+        setPathname(url.pathname);
     }, []);
 
     const [match, component] = React.useMemo(() => {
@@ -291,12 +294,24 @@ function createRoute(defaultRoot: string, controller: FrontendController): Route
         return [match, component];
     }, [pathname]);
 
+    const getQuery = React.useCallback(() => {
+        const url = new URL(window.location.href);
+        let r: any = {};
+
+        url.searchParams.forEach((v, k) => {
+            r[k] = v;
+        });
+
+        return r;
+    }, []);
+
     return {
         pathname,
         match,
         component,
         push,
-        isInitialRender
+        isInitialRender,
+        getQuery
     }
 }
 
@@ -389,6 +404,7 @@ export type LinkDisplayProps = {
     pageId?: string,
     appletId?: string
     params?: any,
+    query?: any
     children?: (props: { url: string }) => JSX.Element
 }
 
@@ -440,9 +456,20 @@ export function LinkDisplay(props: LinkDisplayProps): JSX.Element {
         return '';
     }, [pageId, props.appletId, appletMeta?.featurePath]);
 
-    const finalUrl = React.useMemo(() => {
+    let finalUrl = React.useMemo(() => {
         return path.join(url, appletUrl);
     }, [url, appletUrl])
+
+    finalUrl = React.useMemo(() => {
+        if (props.query) {
+            const searchP = new URLSearchParams(props.query)
+            if (searchP.size > 0) {
+                return `${finalUrl}?${searchP.toString()}`
+            }
+        }
+
+        return finalUrl;
+    }, [finalUrl, props.query]);
 
     if (finalUrl && props?.children && finalUrl !== '.') {
         return props.children({ url: finalUrl })
@@ -616,6 +643,16 @@ export function Protected(props: any) {
     return props.children;
 }
 
+function fallbackRender({ error, resetErrorBoundary }) {
+    return (
+      <div role="alert" style={{ backgroundColor: 'black', height: '100vh', width: '100vw', overflow: 'auto', padding: 16 }}>
+        <p style={{ color: 'white', fontSize: 24 }}>Error:</p>
+        <pre style={{ color: "red" }}>{error.message}</pre>
+        <pre style={{ color: "red" }}>{error.stack}</pre>
+      </div>
+    );
+  }
+
 export function App(props: { initialPath?: any, helmetContext?: any, controller?: FrontendController }) {
     const controller = React.useMemo(() => {
         return props.controller || FrontendController.getInstance()
@@ -624,15 +661,17 @@ export function App(props: { initialPath?: any, helmetContext?: any, controller?
     const socket = createSocket({ controller });
 
     return (
-        <HelmetProvider context={props?.helmetContext}>
-            <RouteProvider.Provider value={route}>
-                <ControllerContext.Provider value={controller}>
-                    <SocketContext.Provider value={socket}>
-                        <PageRenderer />
-                    </SocketContext.Provider>
-                </ControllerContext.Provider>
-            </RouteProvider.Provider>
-        </HelmetProvider>
+        <ErrorBoundary fallbackRender={fallbackRender}>
+            <HelmetProvider context={props?.helmetContext}>
+                <RouteProvider.Provider value={route}>
+                    <ControllerContext.Provider value={controller}>
+                        <SocketContext.Provider value={socket}>
+                            <PageRenderer />
+                        </SocketContext.Provider>
+                    </ControllerContext.Provider>
+                </RouteProvider.Provider>
+            </HelmetProvider>
+        </ErrorBoundary>
     )
 }
 
@@ -664,6 +703,12 @@ export function loadConfig(config: any) {
     }
 }
 
-export { createUploader, createSrc } from './file-uploader';
+export { createUploader, createSrc, UploadButton } from './file-uploader';
 export { useContent } from './content';
 export { CMSLog } from './content-core';
+
+export async function waitInMs(timeourInMs: number) {
+    await new Promise<void>((r) => setTimeout(() => r(), timeourInMs));
+}
+
+export { usePromise } from './use-promise';

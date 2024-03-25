@@ -106,7 +106,8 @@ export function generateAutoloaderFile(cwd: string, target: 'frontend' | 'backen
             
             return `import ${importable.fileId} from '${importable.filePath}';`;
         }).join('\n');
-        registrationExpressions = importables.map((importable: any) => {
+        registrationExpressions = importables
+        .map((importable: any) => {
             if (importable.type === 'view') {
                 if (lazyLoadingEnabled === true) {
                     const id = generator.next().value;

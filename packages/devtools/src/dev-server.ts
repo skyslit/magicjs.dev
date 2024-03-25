@@ -277,7 +277,7 @@ export async function runBuild(opts: Options) {
         app.use(backendMiddleware);
         app.use(frontendMiddleware);
 
-        app.use(hotMiddleware(frontendBuilder.compiler, { log: false }));
+        app.use(hotMiddleware(frontendBuilder.compiler, { log: false, heartbeat: 2000 }));
 
         app.get('/____compiler__status', (req, res) => {
             res.json(

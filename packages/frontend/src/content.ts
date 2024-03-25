@@ -162,23 +162,11 @@ export function useContent<T>(opts_?: string | Partial<ContentHookOptions<T>>) {
         },
         pushItem: (key, val) => {
             const item = getCurrentValByKey(key);
-            if (Array.isArray(item)) {
-                updateKey(key, [...item, val]);
-            } else {
-                throw new Error(
-                    `${key} is not an array. pushItem can be only called upon an array`
-                );
-            }
+            updateKey(key, [...(item || []), val]);
         },
         unshiftItem: (key, val) => {
             const item = getCurrentValByKey(key);
-            if (Array.isArray(item)) {
-                updateKey(key, [val, ...item]);
-            } else {
-                throw new Error(
-                    `${key} is not an array. unshiftItem can be only called upon an array`
-                );
-            }
+            updateKey(key, [val, ...(item || [])]);
         },
         removeItemAt: (key, index) => {
             const item = getCurrentValByKey(key, true);

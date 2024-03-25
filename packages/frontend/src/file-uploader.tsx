@@ -50,6 +50,7 @@ export function createUploader(backendFn: () => any) {
     }, [backendFn, files]);
 
     return {
+        files,
         addFiles,
         readyToUpload,
         upload,
@@ -75,4 +76,58 @@ export function createSrc(backendFn: () => any) {
             return `${url.pathname}${url.search}`
         }
     }
+}
+
+export function UploadButton(props: { 
+    className?: string, 
+    style?: any, 
+    uploadBtnClassName?: string, 
+    uploadBtnStyle?: any, 
+    backendFn: () => any,
+    uploadArg?: any,
+    onUpload?: () => any
+}) {
+    const [err, setErr] = React.useState(null);
+    const { readyToUpload, addFiles, files, loading, uploadProgress, upload } = createUploader(props.backendFn);
+
+    if (loading === true) {
+        return (
+            <span>{`Uploading (${uploadProgress}%)`}</span>
+        )
+    }
+
+    if (err) {
+        return (
+            <span>{err?.message || 'Upload error'}</span>
+        )
+    }
+
+    if (readyToUpload === true) {
+        return (
+            <button 
+                onClick={() => {
+                    setErr(null);
+                    upload(props?.uploadArg)
+                        .then(() => addFiles(null))
+                        .then(() => props.onUpload())
+                        .catch((err) => setErr(err));
+                }}
+                className={`${props?.className} ${props?.uploadBtnClassName}`} 
+                style={{ ...(props?.style || {}), ...(props?.uploadBtnStyle || {}), cursor: 'pointer' }}
+            >
+                    {`Upload ${files.length} file(s)`}
+            </button>
+        )
+    }
+
+    return (
+        <label className={props?.className} style={{ ...(props?.style || {}), cursor: 'pointer' }}>
+            Choose File
+            <input
+                type="file"
+                onChange={(e) => addFiles(e.target.files)}
+                style={{ display: 'none' }}
+            />
+        </label>
+    )
 }

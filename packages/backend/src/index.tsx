@@ -303,7 +303,9 @@ export async function createServer(handler?: (instance: ServerInstance) => void 
 
         if (Array.isArray(config.routes)) {
             const currentPath = req.path;
-            const matchingPath = config.routes.find((route: any) => {
+            const matchingPath = config.routes.filter((r: any) => {
+                return Boolean(r.path);
+            }).find((route: any) => {
                 const pattern = new UrlPattern(route.path);
                 return pattern.match(currentPath);
             });

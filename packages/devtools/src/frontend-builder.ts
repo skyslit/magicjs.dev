@@ -149,7 +149,10 @@ export class SPABuilder extends BuilderBase {
           chunkFilename: './assets/[name].[contenthash:8].chunk.css',
         }),
         this.virtualModules,
-        mode === 'development' && new HotModuleReplacementPlugin(),
+        mode === 'development' && new HotModuleReplacementPlugin({
+          autoConnect: true,
+          timeout: 4000
+        }),
         mode === 'development' && new ReactRefreshWebpackPlugin({
           overlay: false,
           forceEnable: true
