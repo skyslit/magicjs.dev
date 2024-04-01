@@ -1,7 +1,8 @@
 import React from 'react';
 import axios from 'axios';
+import { uiUtils } from './ui-utils';
 
-export function createUploader(backendFn: () => any) {
+export function createUploader(backendFn: () => any, useOriginalFileNames: boolean = false) {
     const [files, addFiles] = React.useState<FileList | null>();
     const [loading, setLoading] = React.useState<boolean>(false);
     const [uploadProgress, setUploadProgress] = React.useState(0);
@@ -19,8 +20,16 @@ export function createUploader(backendFn: () => any) {
                 const apiPath = backendFn.prototype.__fullPath;
                 const formData = new FormData();
                 let i: number;
+                let uploadedFiles: string[] = [];
                 for (i = 0; i < files.length; i++) {
-                    formData.append(`file_${i}`, files[i]);
+                    let name = files[i].name;
+
+                    if (useOriginalFileNames === false) {
+                        name = uiUtils.generateUniqueFilename(name);
+                    }
+
+                    uploadedFiles.push(name);
+                    formData.append(`file_${i}`, new File([files[i]], name, { type: files[i].type }));
                 }
 
                 const response = await axios({
@@ -42,12 +51,14 @@ export function createUploader(backendFn: () => any) {
 
                 setUploadProgress(100);
                 setLoading(false);
+
+                return uploadedFiles;
             } catch (e) {
                 setLoading(false);
                 throw e;
             }
         }
-    }, [backendFn, files]);
+    }, [backendFn, files, useOriginalFileNames]);
 
     return {
         files,
@@ -85,10 +96,12 @@ export function UploadButton(props: {
     uploadBtnStyle?: any, 
     backendFn: () => any,
     uploadArg?: any,
-    onUpload?: () => any
+    onUpload?: (uploadedFiles: string[]) => any
+    useOriginalFileNames?: boolean
+    inputProps?: React.InputHTMLAttributes<HTMLInputElement>
 }) {
     const [err, setErr] = React.useState(null);
-    const { readyToUpload, addFiles, files, loading, uploadProgress, upload } = createUploader(props.backendFn);
+    const { readyToUpload, addFiles, files, loading, uploadProgress, upload } = createUploader(props.backendFn, props.useOriginalFileNames);
 
     if (loading === true) {
         return (
@@ -107,9 +120,13 @@ export function UploadButton(props: {
             <button 
                 onClick={() => {
                     setErr(null);
+
                     upload(props?.uploadArg)
-                        .then(() => addFiles(null))
-                        .then(() => props.onUpload())
+                        .then((uploadedFiles) => {
+                            addFiles(null);
+                            return uploadedFiles;
+                        })
+                        .then((uploadedFiles) => props?.onUpload && props?.onUpload(uploadedFiles))
                         .catch((err) => setErr(err));
                 }}
                 className={`${props?.className} ${props?.uploadBtnClassName}`} 
@@ -124,6 +141,7 @@ export function UploadButton(props: {
         <label className={props?.className} style={{ ...(props?.style || {}), cursor: 'pointer' }}>
             Choose File
             <input
+                {...props?.inputProps}
                 type="file"
                 onChange={(e) => addFiles(e.target.files)}
                 style={{ display: 'none' }}

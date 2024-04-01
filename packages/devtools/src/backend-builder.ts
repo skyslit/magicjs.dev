@@ -4,6 +4,7 @@ import { BuilderBase, ConfigurationOptions } from './builder-base';
 import path from 'path';
 import VirtualModulesPlugin from 'webpack-virtual-modules';
 import { generateAutoloaderFile } from './utils/generate-auto-loader-file';
+import fs from 'fs';
 
 /**
  * Backend Builder
@@ -45,6 +46,18 @@ export class BackendBuilder extends BuilderBase {
    * @return {Configuration}
    */
   getConfiguration({ cwd, mode }: ConfigurationOptions): Configuration {
+    let packageJson: any = null;
+    let serverExternalsAllowList: string[] = [];
+
+    try {
+      packageJson = JSON.parse(fs.readFileSync(path.join(cwd, 'package.json'), 'utf-8'));
+      if (Array.isArray(packageJson?.magicjsConfig?.compilerOptions?.serverBundleAllowList)) {
+        serverExternalsAllowList = packageJson?.magicjsConfig?.compilerOptions?.serverBundleAllowList;
+      }
+    } catch (e) {
+      console.error(e);
+    }
+
     const babelLoaderOptions = {
       // Should not take any babelrc file located in the project root
       babelrc: false,
@@ -103,6 +116,7 @@ export class BackendBuilder extends BuilderBase {
           allowlist: [
             '@magicjs.dev/backend',
             '@magicjs.dev/frontend',
+            ...serverExternalsAllowList,
             // Allow the stylesheet to be handled by ignore-loader
             this.getStyleTestExp(),
           ],

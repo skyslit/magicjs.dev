@@ -4,6 +4,7 @@ import { getService } from './services';
 import { IEmailVerificationServices } from './services/IEmailVerificationServices';
 import { IUserUploadServices } from './services/IUserUploadServices';
 import { data } from '.';
+import path from 'path';
 
 /* -------------------------------------------------------------------------- */
 /*                                  Security                                  */
@@ -106,6 +107,32 @@ function initiateEmailVerification(emailToVerify: string, otp: number) {
     return isVerifyEmailInitiated;
 }
 
+function* infinite() {
+    let index = 0;
+    let timestamp = (new Date()).valueOf();
+
+    const g = () => `${timestamp}_${index}`;
+
+    while (true) {
+        index++;
+
+        yield g();
+    }
+
+    return g();
+}
+
+export const generator = infinite();
+
+function generateUniqueId(): string {
+    return generator.next().value;
+}
+
+function generateUniqueFilename(fileName: string) {
+    const p = path.parse(fileName);
+    return `${generateUniqueId()}${p.ext}`;
+}
+
 export default {
     hash,
     verifyHash,
@@ -116,5 +143,7 @@ export default {
     assignRoleToUser,
     unassignRoleFromUser,
     isUserInAnyRoles,
-    findAllRolesByUser
+    findAllRolesByUser,
+    generateUniqueId,
+    generateUniqueFilename
 }

@@ -707,6 +707,7 @@ export { createUploader, createSrc, UploadButton } from './file-uploader';
 export { useContent } from './content';
 export { CMSLog } from './content-core';
 
+export { uiUtils } from './ui-utils';
 export async function waitInMs(timeourInMs: number) {
     await new Promise<void>((r) => setTimeout(() => r(), timeourInMs));
 }
