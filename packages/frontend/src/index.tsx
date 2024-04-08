@@ -634,13 +634,55 @@ export function Protected(props: any) {
 
     if (current.isAuthenticated === false) {
         return (
-            <div style={{ height: '100vh', width: '100vw', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                <h1 className='text-5xl'>401 Unauthorized. You need to be signed in to access this page.</h1>
-            </div>
+            <RedirectToLoginPage />
         )
     }
 
     return props.children;
+}
+
+export function RedirectToLoginPage() {
+    const { controller } = useController();
+
+    let authPageId = React.useMemo(() => {
+        if (controller?.arkConfig?.authPageId) {
+            return controller?.arkConfig?.authPageId;
+        }
+
+        return 'login';
+    }, [controller]);
+
+    const loginRoute = React.useMemo(() => {
+        if (Array.isArray(controller.arkConfig?.routes)) {
+            return controller.arkConfig.routes.find((r) => r.pageId === authPageId);
+        }
+
+        return null;
+    }, [authPageId, controller.arkConfig]);
+
+    React.useEffect(() => {
+        if (loginRoute) {
+            const { path } = loginRoute;
+            const url = new URL('http://localhost');
+            url.pathname = path;
+            url.searchParams.set('return_path', encodeURIComponent(`${global.window.location.pathname}${global.window.location.search}`));
+            window.location.replace(`${url.pathname}${url.search}`);
+        }
+    }, [loginRoute]);
+
+    return (
+        <div style={{ height: '100vh', width: '100vw', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+            {/* <h1 className='text-5xl'>401 Unauthorized. You need to be signed in to access this page.</h1> */}
+        </div>
+    )
+}
+
+export function goBackToReturnPath() {
+    const s = new URLSearchParams(window.location.search);
+    if (s.has('return_path')) {
+        const returnPath = decodeURIComponent(s.get('return_path'));
+        window.location.replace(returnPath);
+    }
 }
 
 function fallbackRender({ error, resetErrorBoundary }) {
