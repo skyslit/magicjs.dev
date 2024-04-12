@@ -381,7 +381,7 @@ function PageRenderer(props: any) {
 
     if (isInitialRender === false) {
         return (
-            <React.Suspense fallback={<div>Lazy Loading</div>}>
+            <React.Suspense fallback={<div></div>}>
                 <Component {...props} />
             </React.Suspense>
         )
