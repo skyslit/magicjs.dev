@@ -3,8 +3,9 @@ import { Readable } from 'stream';
 import { getService } from './services';
 import { IEmailVerificationServices } from './services/IEmailVerificationServices';
 import { IUserUploadServices } from './services/IUserUploadServices';
-import { data } from '.';
+import { data, io } from '.';
 import path from 'path';
+import moment from 'moment';
 
 /* -------------------------------------------------------------------------- */
 /*                                  Security                                  */
@@ -16,6 +17,7 @@ export type RoleMapping = {
 }
 
 const USER_ROLE_MAPPING_COLLECTION_NAME = 'user_role_mapping';
+const NOTIFICATION_COLLECTION_NAME = 'notifications';
 
 function hash(payload: string, salt: number = 10) {
     const s = bcrypt.genSaltSync();
@@ -133,6 +135,38 @@ function generateUniqueFilename(fileName: string) {
     return `${generateUniqueId()}${p.ext}`;
 }
 
+type NotificationChannel = 'app';
+
+async function sendNotification(toUserIds: string[], payload: { title: string, message: string, group?: string, meta?: any }, channels?: NotificationChannel[]): Promise<any[]> {
+    if (!channels) {
+        channels = ['app'];
+    }
+
+    if (!payload?.group) {
+        payload.group = 'default'
+    }
+
+    const notificationsRef = data(NOTIFICATION_COLLECTION_NAME);
+    let notificationResults: any[] = [];
+
+    for (const id of toUserIds) {
+        notificationResults.push(
+            await notificationsRef.insertOne({
+                userId: id,
+                payload,
+                timeInUtc: moment.utc().valueOf(),
+                channels,
+                hasRead: false,
+                readOnUtc: -1
+            })
+        );
+    }
+
+    io().to(toUserIds.map((u) => `user-room-${u}`)).emit('notification-received');
+
+    return notificationResults;
+}
+
 export default {
     hash,
     verifyHash,
@@ -145,5 +179,6 @@ export default {
     isUserInAnyRoles,
     findAllRolesByUser,
     generateUniqueId,
-    generateUniqueFilename
+    generateUniqueFilename,
+    sendNotification
 }

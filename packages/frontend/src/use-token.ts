@@ -6,12 +6,12 @@ type ExecuteWithTokenArgs = {
 export type TokenProviderOptions = {
     maxRetryAttempt: number
     defaultToken: any
-    tokenResolver: () => Promise<any> | any
+    tokenResolver: (api: ExecuteWithTokenArgs) => Promise<any> | any
 };
 
 export type TokenProvider = {
     executeWithToken: (fn: (api: ExecuteWithTokenArgs) => Promise<any> | any) => Promise<any>
-    attachTokenResolver: (fn: () => Promise<any> | any) => void
+    attachTokenResolver: (fn: (api: ExecuteWithTokenArgs) => Promise<any> | any) => void
 }
 
 export function createTokenProvider(opts?: Partial<TokenProviderOptions>): TokenProvider {
@@ -23,7 +23,7 @@ export function createTokenProvider(opts?: Partial<TokenProviderOptions>): Token
         opts.maxRetryAttempt = 2;
     }
 
-    const attachTokenResolver = async (fn: () => Promise<any> | any) => {
+    const attachTokenResolver = async (fn: (api: ExecuteWithTokenArgs) => Promise<any> | any) => {
         opts.tokenResolver = fn;
     }
 
@@ -34,7 +34,10 @@ export function createTokenProvider(opts?: Partial<TokenProviderOptions>): Token
 
         while (true) {
             if (shouldRefreshToken === true && typeof opts?.tokenResolver === 'function') {
-                opts.defaultToken = await Promise.resolve(opts?.tokenResolver());
+                opts.defaultToken = await Promise.resolve(opts?.tokenResolver({
+                    attempt,
+                    token: opts?.defaultToken
+                }));
             }
 
             try {
@@ -42,7 +45,6 @@ export function createTokenProvider(opts?: Partial<TokenProviderOptions>): Token
                     attempt,
                     token: opts?.defaultToken
                 }));
-
                 break;
             } catch (e) {
                 if (e?.shouldRefreshToken === true) {
@@ -71,7 +73,7 @@ export function createTokenProvider(opts?: Partial<TokenProviderOptions>): Token
 export class TokenExpiredError extends Error {
     shouldRefreshToken: boolean = true;
     
-    constructor(message: string) {
+    constructor(message?: string) {
         super(message);
     }
 }

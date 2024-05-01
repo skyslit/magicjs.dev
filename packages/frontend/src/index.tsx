@@ -756,3 +756,4 @@ export async function waitInMs(timeourInMs: number) {
 
 export { usePromise } from './use-promise';
 export { createTokenProvider, TokenExpiredError, TokenProvider } from './use-token';
+export { useNotification } from './use-notification';

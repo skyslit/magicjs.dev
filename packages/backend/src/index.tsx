@@ -10,7 +10,7 @@ import fs from 'fs';
 import path from 'path';
 import HTMLParser from 'node-html-parser';
 import { App, FrontendController, controllerRef } from '@magicjs.dev/frontend';
-import { MongoClient, Collection } from 'mongodb';
+import { MongoClient, Collection, ObjectId } from 'mongodb';
 import jwt from 'jsonwebtoken';
 import moment from 'moment';
 import utilsImp, { RoleMapping } from './utils';
@@ -244,6 +244,95 @@ export class ServerInstance {
 
         this.app.post('/__backend/__context', async (req, res) => {
             res.json(extractFrontendContext(req.requestContext))
+        });
+
+        this.app.get('/__backend/__services/notifications/latest', async (req, res) => {
+            let notifications: any[] = [];
+            let { limit, fromNotificationId } = req.query as any;
+
+            if (isNaN(limit)) {
+                limit = 50;
+            } else {
+                limit = parseInt(limit);
+            }
+
+            if (req.requestContext.isAuthenticated === true) {
+                const notificationsRef = data('notifications');
+                notifications = await notificationsRef.find({ 
+                    userId: String(req.requestContext.currentUser._id),
+                    ...(() => {
+                        if (fromNotificationId) {
+                            return {
+                                _id: {
+                                    $gt: new ObjectId(fromNotificationId)
+                                }
+                            }
+                        }
+
+                        return {}
+                    })()
+                }).sort({ timeInUtc: -1 }).limit(limit).toArray();
+            }
+
+            res.json({ notifications })
+        });
+
+        this.app.get('/__backend/__services/notifications/more', async (req, res) => {
+            let notifications: any[] = [];
+            let { limit, fromNotificationId } = req.query as any;
+
+            if (isNaN(limit)) {
+                limit = 50;
+            } else {
+                limit = parseInt(limit);
+            }
+
+            if (req.requestContext.isAuthenticated === true) {
+                const notificationsRef = data('notifications');
+                notifications = await notificationsRef.find({ 
+                    userId: String(req.requestContext.currentUser._id),
+                    ...(() => {
+                        if (fromNotificationId) {
+                            return {
+                                _id: {
+                                    $gt: new ObjectId(fromNotificationId)
+                                }
+                            }
+                        }
+
+                        return {}
+                    })()
+                }).limit(limit).toArray();
+            }
+
+            res.json({ notifications })
+        });
+
+        this.app.put('/__backend/__services/notifications/mark-as-read', async (req, res) => {
+            const { ids } = req.body;
+            
+            if (!Array.isArray(ids)) {
+                return res.status(400).json({ message: 'Please provide valid ids' });
+            }
+
+            let readOnUtc = moment.utc().valueOf()
+
+            if (req.requestContext.isAuthenticated === true) {
+                const notificationsRef = data('notifications');
+                await notificationsRef.updateMany({
+                    userId: String(req.requestContext.currentUser._id),
+                    _id: {
+                        $in: ids.map((id) => new ObjectId(id))
+                    }
+                }, {
+                    $set: {
+                        hasRead: true,
+                        readOnUtc
+                    }
+                });
+            }
+
+            res.json({ ack: true, readOnUtc })
         });
 
         this.app.post('/__backend/__context/logout', async (req, res) => {
