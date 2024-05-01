@@ -13,7 +13,7 @@ import { App, FrontendController, controllerRef } from '@magicjs.dev/frontend';
 import { MongoClient, Collection, ObjectId } from 'mongodb';
 import jwt from 'jsonwebtoken';
 import moment from 'moment';
-import utilsImp, { RoleMapping } from './utils';
+import utilsImp, { RoleMapping, generator } from './utils';
 import UrlPattern from 'url-pattern';
 import { Server, Socket } from 'socket.io';
 import { UploaderUtils, createUploaderUtils } from './uploader-utils';
@@ -121,6 +121,20 @@ export class ServerInstance {
             req.requestContext = createRequestContext({
                 roles,
                 uploader: createUploaderUtils(req, res),
+                createResponseBucket: (initialVal) => {
+                    // @ts-ignore
+                    if (!req._resBucket) {
+                        // @ts-ignore
+                        req._resBucket = {};
+                    }
+
+                    const key = String((new Date()).valueOf()) + generator.next();
+                    // @ts-ignore
+                    req._resBucket[key] = initialVal;
+
+                    // @ts-ignore
+                    return req._resBucket[key];
+                },
                 advanced: {
                     req,
                     res,
@@ -534,6 +548,7 @@ type RequestContext = {
     },
     coreHandler: (handler: (req: Request, res: Response) => any) => any
     uploader: UploaderUtils
+    createResponseBucket: (initialVal: any) => any
 };
 export function createRequestContext(c: RequestContext) {
     return c;

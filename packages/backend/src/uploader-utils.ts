@@ -40,7 +40,13 @@ export function createUploaderUtils(req: Request, res: Response): UploaderUtils 
                 });
 
                 bb.on('close', () => {
-                    res.json({ ack: true });
+                    // @ts-ignore
+                    const buckets: any = req?._resBucket || {};
+                    let bucketResponses = Object.keys(buckets).reduce((acc, key) => {
+                        return { ...acc, ...buckets[key] };
+                    }, {});
+
+                    res.json({ ...bucketResponses, ack: true });
                 });
                 
                 req.pipe(bb);
