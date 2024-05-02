@@ -11,7 +11,7 @@ export function createUploader(backendFn: () => any, useOriginalFileNames: boole
         return files && files.length > 0;
     }, [files]);
 
-    const upload = React.useCallback(async (...args: any[]) => {
+    const performUpload = React.useCallback(async (files: FileList, ...args: any[]) => {
         if (files) {
             try {
                 setLoading(true);
@@ -58,7 +58,11 @@ export function createUploader(backendFn: () => any, useOriginalFileNames: boole
                 throw e;
             }
         }
-    }, [backendFn, files, useOriginalFileNames]);
+    }, [backendFn, useOriginalFileNames]);
+
+    const upload = React.useCallback(async (...args: any[]) => {
+        return performUpload(files, ...args);
+    }, [performUpload, files]);
 
     return {
         files,
@@ -66,7 +70,8 @@ export function createUploader(backendFn: () => any, useOriginalFileNames: boole
         readyToUpload,
         upload,
         loading,
-        uploadProgress
+        uploadProgress,
+        performUpload
     }
 }
 
