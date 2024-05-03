@@ -34,10 +34,15 @@ export function createTokenProvider(opts?: Partial<TokenProviderOptions>): Token
 
         while (true) {
             if (shouldRefreshToken === true && typeof opts?.tokenResolver === 'function') {
-                opts.defaultToken = await Promise.resolve(opts?.tokenResolver({
-                    attempt,
-                    token: opts?.defaultToken
-                }));
+                try {
+                    opts.defaultToken = await Promise.resolve(opts?.tokenResolver({
+                        attempt,
+                        token: opts?.defaultToken
+                    }));
+                } catch (e) {
+                    console.error(e);
+                    throw new Error(`Error while resolving token`);
+                }
             }
 
             try {
