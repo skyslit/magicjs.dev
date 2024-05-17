@@ -53,6 +53,7 @@ export function createTokenProvider(opts?: Partial<TokenProviderOptions>): Token
                 break;
             } catch (e) {
                 if (e?.shouldRefreshToken === true) {
+                    shouldRefreshToken = true;
                     if (attempt >= opts.maxRetryAttempt) {
                         throw e;
                     } else {
