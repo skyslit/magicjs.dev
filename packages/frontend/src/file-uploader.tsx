@@ -2,7 +2,7 @@ import React from 'react';
 import axios from 'axios';
 import { uiUtils } from './ui-utils';
 
-export function createUploader(backendFn: () => any, useOriginalFileNames: boolean = false) {
+export function createUploader(backendFn: () => any, useOriginalFileNames: boolean = false, processIndividually: boolean = false) {
     const [files, addFiles] = React.useState<FileList | null>();
     const [loading, setLoading] = React.useState<boolean>(false);
     const [uploadProgress, setUploadProgress] = React.useState(0);
@@ -17,48 +17,94 @@ export function createUploader(backendFn: () => any, useOriginalFileNames: boole
                 setLoading(true);
                 setUploadProgress(0);
 
-                const apiPath = backendFn.prototype.__fullPath;
-                const formData = new FormData();
-                let i: number;
-                let uploadedFiles: string[] = [];
-                for (i = 0; i < files.length; i++) {
-                    let name = files[i].name;
-
-                    if (useOriginalFileNames === false) {
-                        name = uiUtils.generateUniqueFilename(name);
-                    }
-
-                    uploadedFiles.push(name);
-                    formData.append(`file_${i}`, new File([files[i]], name, { type: files[i].type }));
-                }
-
-                const response = await axios({
-                    data: formData,
-                    method: 'post',
-                    url: apiPath,
-                    onUploadProgress: progressEvent => {
-                        const { loaded, total } = progressEvent;
-                        const percentCompleted = Math.round((loaded * 100) / (total as any));
-                        if (!isNaN(percentCompleted)) {
-                            setUploadProgress(percentCompleted);
+                if (processIndividually === false) {
+                    const apiPath = backendFn.prototype.__fullPath;
+                    const formData = new FormData();
+                    let i: number;
+                    let uploadedFiles: string[] = [];
+                    for (i = 0; i < files.length; i++) {
+                        let name = files[i].name;
+    
+                        if (useOriginalFileNames === false) {
+                            name = uiUtils.generateUniqueFilename(name);
                         }
-                    },
-                    headers: {
-                        'Content-Type': 'multipart/form-data',
-                        'args': JSON.stringify(args)
+    
+                        uploadedFiles.push(name);
+                        formData.append(`file_${i}`, new File([files[i]], name, { type: files[i].type }));
                     }
-                });
+    
+                    const response = await axios({
+                        data: formData,
+                        method: 'post',
+                        url: apiPath,
+                        onUploadProgress: progressEvent => {
+                            const { loaded, total } = progressEvent;
+                            const percentCompleted = Math.round((loaded * 100) / (total as any));
+                            if (!isNaN(percentCompleted)) {
+                                setUploadProgress(percentCompleted);
+                            }
+                        },
+                        headers: {
+                            'Content-Type': 'multipart/form-data',
+                            'args': JSON.stringify(args)
+                        }
+                    });
+    
+                    setUploadProgress(100);
+                    setLoading(false);
 
-                setUploadProgress(100);
-                setLoading(false);
+                    return uploadedFiles;
+                } else {
+                    const apiPath = backendFn.prototype.__fullPath;
+                    let i;
+                    let uploadedFiles: string[] = [];
+                    for (i = 0; i < files.length; i++) {
+                        let name = files[i].name;
+    
+                        if (useOriginalFileNames === false) {
+                            name = uiUtils.generateUniqueFilename(name);
+                        }
+                        
+                        const formData = new FormData();
+                        formData.append(`file_0`, new File([files[i]], name, { type: files[i].type }));
 
-                return uploadedFiles;
+                        const filesPending = files.length - uploadedFiles.length;
+
+                        const response = await axios({
+                            data: formData,
+                            method: 'post',
+                            url: apiPath,
+                            onUploadProgress: progressEvent => {
+                                const { loaded, total } = progressEvent;
+                                const percentCompleted = Math.round((loaded * 100) / (total as any));
+                                if (!isNaN(percentCompleted)) {
+                                    setUploadProgress(percentCompleted / filesPending);
+                                }
+                            },
+                            headers: {
+                                'Content-Type': 'multipart/form-data',
+                                'args': JSON.stringify(args)
+                            }
+                        });
+
+                        await new Promise<void>((r) => setTimeout(() => {
+                            r();
+                        }, 300));
+
+                        uploadedFiles.push(name);
+                    }
+
+                    setUploadProgress(100);
+                    setLoading(false);
+
+                    return uploadedFiles;
+                }
             } catch (e) {
                 setLoading(false);
                 throw e;
             }
         }
-    }, [backendFn, useOriginalFileNames]);
+    }, [backendFn, useOriginalFileNames, processIndividually]);
 
     const upload = React.useCallback(async (...args: any[]) => {
         return performUpload(files, ...args);
