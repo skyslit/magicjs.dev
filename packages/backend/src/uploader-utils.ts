@@ -29,17 +29,11 @@ export function createUploaderUtils(req: Request, res: Response): UploaderUtils 
 
                 hasInitialised = true;
 
-                bb.on('file', (name, file, info) => {
-                    if (handlers['onfile']) {
-                        handlers['onfile'](name, file, info)
+                const completeRequest = () => {
+                    if (progress.every(Boolean) === false) {
+                        return;
                     }
-                });
 
-                bb.on('field', (name, val, info) => {
-                    console.log(`Field [${name}]: value: %j`, val);
-                });
-
-                bb.on('close', () => {
                     // @ts-ignore
                     const buckets: any = req?._resBucket || {};
                     let bucketResponses = Object.keys(buckets).reduce((acc, key) => {
@@ -47,8 +41,32 @@ export function createUploaderUtils(req: Request, res: Response): UploaderUtils 
                     }, {});
 
                     res.json({ ...bucketResponses, ack: true });
+                }
+
+                let progress: Array<boolean> = [];
+                let progressIndex: number = -1;
+                bb.on('file', async (name, file, info) => {
+                    const index = ++progressIndex;
+                    progress[index] = false;
+                    try {
+                        if (handlers['onfile']) {
+                            await Promise.resolve(handlers['onfile'](name, file, info));
+                        }
+                    } catch (e) {
+                        console.error(e);
+                    }
+                    progress[index] = true;
+                    completeRequest();
                 });
-                
+
+                bb.on('field', (name, val, info) => {
+                    console.log(`Field [${name}]: value: %j`, val);
+                });
+
+                bb.on('close', () => {
+                    completeRequest();
+                });
+
                 req.pipe(bb);
             }
         }
