@@ -1,9 +1,11 @@
-const registry: any = {};
+export class StaticStore {
+    static registry: any = {};
+}
 
 export function registerService(key: string, service: any) {
-    registry[key] = service;
+    StaticStore.registry[key] = service;
 }
 
 export function getService<T>(key: string): T {
-    return registry[key] || null
+    return StaticStore.registry[key] || null
 }

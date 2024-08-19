@@ -613,3 +613,6 @@ export function loadConfig(config: any) {
         }
     }
 }
+
+
+export { getService, registerService, StaticStore } from './services';
