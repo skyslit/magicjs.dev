@@ -243,6 +243,10 @@ export class ServerInstance {
                     if (result?.___resMode === 'managed') {
                         // Let the function handle the response
                         if (result?.reader) {
+                            result.reader.on('error', (err: any) => {
+                                console.error(err);
+                                res.status(500).json({ message: 'Stream error', innerError: err });
+                            })
                             result.reader.pipe(res);
                         }
                         return;
