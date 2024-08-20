@@ -30,7 +30,7 @@ export function createUploaderUtils(req: Request, res: Response): UploaderUtils 
                 hasInitialised = true;
 
                 const completeRequest = () => {
-                    if (progress.every(Boolean) === false) {
+                    if (progress.every(Boolean) === false || streamClosed === false) {
                         return;
                     }
 
@@ -45,6 +45,7 @@ export function createUploaderUtils(req: Request, res: Response): UploaderUtils 
 
                 let progress: Array<boolean> = [];
                 let progressIndex: number = -1;
+                let streamClosed = false;
                 bb.on('file', async (name, file, info) => {
                     const index = ++progressIndex;
                     progress[index] = false;
@@ -64,6 +65,7 @@ export function createUploaderUtils(req: Request, res: Response): UploaderUtils 
                 });
 
                 bb.on('close', () => {
+                    streamClosed = true;
                     completeRequest();
                 });
 
