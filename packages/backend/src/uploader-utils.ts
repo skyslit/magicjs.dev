@@ -20,7 +20,7 @@ export type UploaderUtils = () => UploadHandler;
 export function createUploaderUtils(req: Request, res: Response): UploaderUtils {
     return (config?: busboy.BusboyConfig) => {
         let hasInitialised: boolean = false;
-        const bb = busboy({ ...config || {}, headers: req.headers });
+        const bb = busboy({ ...config || {}, headers: req.headers, defParamCharset: 'utf8' });
         const handlers: any = {
             '_read': () => {
                 if (hasInitialised === true) {
