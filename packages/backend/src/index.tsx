@@ -31,13 +31,14 @@ declare global {
 }
 
 function extractFrontendContext(c: RequestContext) {
-    const { currentUser, isAuthenticated, token, roles } = c;
+    const { currentUser, isAuthenticated, token, roles, meta } = c;
 
     return {
         currentUser,
         isAuthenticated,
         token,
-        roles
+        roles,
+        meta
     }
 }
 
@@ -119,6 +120,7 @@ export class ServerInstance {
             }
 
             req.requestContext = createRequestContext({
+                meta: null,
                 roles,
                 uploader: createUploaderUtils(req, res),
                 createResponseBucket: (initialVal) => {
@@ -553,6 +555,7 @@ type RequestContext = {
     coreHandler: (handler: (req: Request, res: Response) => any) => any
     uploader: UploaderUtils
     createResponseBucket: (initialVal: any) => any
+    meta: any
 };
 export function createRequestContext(c: RequestContext) {
     return c;
