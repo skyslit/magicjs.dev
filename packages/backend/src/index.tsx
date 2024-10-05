@@ -38,6 +38,7 @@ function extractFrontendContext(c: RequestContext) {
         isAuthenticated,
         token,
         roles,
+        // meta is for storing extra information
         meta
     }
 }
