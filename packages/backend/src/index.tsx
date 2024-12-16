@@ -84,10 +84,18 @@ export class ServerInstance {
         this.app.use(morgan('dev'));
         this.app.use(cookieParser());
 
-        this.app.use(express.json());
-        this.app.use(express.urlencoded());
-        this.app.use(express.text());
-        this.app.use(express.raw());
+        this.app.use(express.json({
+            limit: '100mb'
+        }));
+        this.app.use(express.urlencoded({
+            limit: '100mb'
+        }));
+        this.app.use(express.text({
+            limit: '100mb'
+        }));
+        this.app.use(express.raw({
+            limit: '100mb'
+        }));
         this.app.use(
             '/_browser',
             express.static(path.join(__dirname, '../_browser'))
