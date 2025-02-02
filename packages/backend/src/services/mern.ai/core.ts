@@ -44,8 +44,17 @@ export class MERNAI_Core {
         this.userUploadServiceEnabled = this.isEnabled && Boolean(WS_ENVIRONMENT_ID);
 
         if (this._isEnabled === true) {
+            let baseUrl = 'https://compass-services.skyslit.com';
+
+            if (typeof process.env.WS_ENVIRONMENT_ID === 'string' && process.env.WS_ENVIRONMENT_ID !== '') {
+                console.log('Using private service name for compass service');
+                baseUrl = 'http://srv-service.prod';
+            } else {
+                console.log('Using public service name for compass service');
+            }
+
             this.client = axios.create({
-                baseURL: process.env.COMPASS_SERVICE_ENDPOINT || 'https://compass-services.skyslit.com',
+                baseURL: process.env.COMPASS_SERVICE_ENDPOINT || baseUrl,
                 headers: {
                     'tenantid': WS_CRED_SERVICE_TENANT_ID,
                     'clientid': WS_CRED_SERVICE_CLIENT_ID,
