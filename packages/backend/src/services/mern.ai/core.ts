@@ -43,6 +43,7 @@ export class MERNAI_Core {
 
         this.userUploadServiceEnabled = this.isEnabled && Boolean(WS_ENVIRONMENT_ID);
 
+        // Added logs
         if (this._isEnabled === true) {
             let baseUrl = 'https://compass-services.skyslit.com';
 
