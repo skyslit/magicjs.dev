@@ -632,3 +632,4 @@ export function loadConfig(config: any) {
 
 
 export { getService, registerService, StaticStore } from './services';
+export { resolveCompassServiceEndpoint } from './services/mern.ai/core';
